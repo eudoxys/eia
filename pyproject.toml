@@ -33,10 +33,10 @@ classifiers = [
 dependencies=["pandas","openpyxl","requests"]
 
 [project.urls]
-Homepage = "https://github.com/eudoxys/eia861"
-Documentation = "https://www.eudoxys.com/eia861"
-Repository = "https://github.com/eudoxys/eia861.git"
-Issues = "https://github.com/eudoxys/eia861/issues"
+Homepage = "https://github.com/eudoxys/eia"
+Documentation = "https://www.eudoxys.com/eia"
+Repository = "https://github.com/eudoxys/eia.git"
+Issues = "https://github.com/eudoxys/eia/issues"
 
 [project.scripts]
 eia = "cli:main"
