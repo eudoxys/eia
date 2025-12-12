@@ -5,7 +5,7 @@ Access the following EIA Form data
 
 ## Documentation
 
-See https://eudoxys.com/eia
+See https://www.eudoxys.com/eia
 
 ## Installation
 
