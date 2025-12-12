@@ -59,7 +59,7 @@ def main(*args,**kwargs):
 
         if not args.warning:
             warnings.showwarning = lambda *x:print(
-                f"WARNING [{__package__}/{os.path.basename(x[2])}:{x[3]}]:",
+                f"WARNING [{__package__}]:",
                 x[0],
                 flush=True,
                 file=sys.stderr,
