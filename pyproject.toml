@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.package-data]
 eia = ["*.py"]
 
-# [tool.setuptools.dynamic]
-# dependencies = {file=["requirements.txt"]}
+[tool.setuptools.dynamic]
+dependencies = {file=["requirements.txt"]}
 
 [project]
 name = "eia"
@@ -29,8 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Software Development :: Libraries",
     ]
-# dynamic=["dependencies"]
-dependencies=["pandas","openpyxl","requests"]
+dynamic=["dependencies"]
 
 [project.urls]
 Homepage = "https://github.com/eudoxys/eia"
