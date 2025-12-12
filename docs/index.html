@@ -30,6 +30,24 @@
     <p/>
 
 
+<h2 class="w3-container">eia</h2>
+<p/>
+EIA command line processor
+<p/>
+
+
+<h4 class="w3-container">Usage</h4>
+<p/>
+<pre>eia [-h] [-o OUTPUT] FORM
+</pre>
+
+
+<h4 class="w3-container">Exapmle</h4>
+<p/>
+<pre>eia 861
+</pre>
+
+
 <h1 id="python" class="w3-container">Python Library</h1>
 
 
@@ -40,17 +58,27 @@ distributed/small scale solar data for US states starting in 2017.
 <p/>
 The data frame includes the following columns.
 <p/>
-<ul><li><code>date</code>: the primary index indicate the date on which the new valuesgo into effect.
+<ul><li><code>date</code>: the primary index indicate the date on which the new values
+go into effect.
 </li>
-<li><code>state</code>: the state for which the values are in effect.</li>
-<li><code>res_mw</code>: the residential power capacity in megaWatts.</li>
-<li><code>com_mw</code>: the commercial power capacity in megaWatts.</li>
-<li><code>ind_mw</code>: the industrial power capacity in megaWatts.</li>
-<li><code>tot_mw</code>: the total power capacity in megaWatts.</li>
-<li><code>res_mwh</code>: the residential energy production in megaWatts hours.</li>
-<li><code>com_mwh</code>: the commercial energy production in megaWatts hours.</li>
-<li><code>ind_mwh</code>: the industrial energy production in megaWatts hours.</li>
-<li><code>tot_mwh</code>: the total energy production in megaWatts hours.</li>
+<li><code>state</code>: the state for which the values are in effect.
+</li>
+<li><code>res_mw</code>: the residential power capacity in megaWatts.
+</li>
+<li><code>com_mw</code>: the commercial power capacity in megaWatts.
+</li>
+<li><code>ind_mw</code>: the industrial power capacity in megaWatts.
+</li>
+<li><code>tot_mw</code>: the total power capacity in megaWatts.
+</li>
+<li><code>res_mwh</code>: the residential energy production in megaWatts hours.
+</li>
+<li><code>com_mwh</code>: the commercial energy production in megaWatts hours.
+</li>
+<li><code>ind_mwh</code>: the industrial energy production in megaWatts hours.
+</li>
+<li><code>tot_mwh</code>: the total energy production in megaWatts hours.
+</li>
 </None>
 
 </ul>
@@ -66,9 +94,12 @@ Construct EIA Form 861 dataframe
 
 <h4 class="w3-container">Arguments</h4>
 <p/>
-<ul><li><code>years</code>: specify years to include (default 2017 to present)</li>
-<li><code>refresh</code>: refresh data cache (default <code>False</code>)</li>
-<li><code>raw</code>: disable dataframe cleanup, i.e., don't set <code>NaN</code> valuesto 0.0, construct the <code>date</code> index, or remove the <code>status</code>
+<ul><li><code>years</code>: specify years to include (default 2017 to present)
+</li>
+<li><code>refresh</code>: refresh data cache (default <code>False</code>)
+</li>
+<li><code>raw</code>: disable dataframe cleanup, i.e., don't set <code>NaN</code> values
+to 0.0, construct the <code>date</code> index, or remove the <code>status</code>
 column (default <code>False</code>)
 </li>
 </None>
@@ -78,6 +109,28 @@ column (default <code>False</code>)
 
 <h3 class="w3-container">Static Variables</h3>
 <p/><code>CACHEDIR = None</code>
+
+
+<h2 id="python" class="w3-container">Module Functions</h2>
+
+
+<h3 class="w3-container"><code><b>main</b>() &rightarrow; <i>None</i></code></h3>
+<p/>
+EIA form accessor main command line processor
+<p/>
+
+
+<h4 class="w3-container">Argument</h4>
+<p/>
+<ul><li><code>*args</code>: command line arguments (none is sys.argv)
+</li>
+<li><code>**kwargs</code>: CLI options
+</li>
+</None>
+
+</ul>
+
+
 
 
 <h1 id="package" class="w3-container">Package Metadata</h1>

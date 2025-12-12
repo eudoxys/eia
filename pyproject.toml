@@ -39,4 +39,4 @@ Repository = "https://github.com/eudoxys/eia.git"
 Issues = "https://github.com/eudoxys/eia/issues"
 
 [project.scripts]
-eia = "cli:main"
+eia = "eia.cli:main"
