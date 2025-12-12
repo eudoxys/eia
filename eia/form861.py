@@ -95,7 +95,8 @@ class Form861(pd.DataFrame):
                     ).dropna(subset="status")
                 )
             except Exception as err:
-                warnings.warn(f"unable to read {filename} ({err}). Deleting cache file (try again later)")
+                warnings.warn(f"unable to read {filename} ({err})--"\
+                    "deleting invalid cache file (try again later)")
                 os.unlink(cachefile)
 
         # construct dataframe
@@ -119,11 +120,3 @@ class Form861(pd.DataFrame):
             data.month = data.month.astype(int)
             data.year = data.year.astype(int)
         super().__init__(data)
-
-if __name__ == "__main__":
-
-    pd.options.display.max_columns = None
-    pd.options.display.width = None
-    pd.options.display.max_rows=None
-
-    print(Form861(years=[2020,2021,2022]))
