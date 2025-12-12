@@ -1,0 +1,102 @@
+<!doctype html>
+    <html>
+    <head>
+        <title>eia</title>
+        <meta name="expires" content="86400" />
+        <link rel="stylesheet" href="qdox.css">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    </head>
+    <body>
+
+    <!-- Sidebar -->
+    <div class="w3-sidebar w3-light-grey w3-bar-block" style="width:180px">
+      <center>
+        <img src="https://avatars.githubusercontent.com/u/21315775?v=4" height="128px" width="128px"/>
+        <br/><a href="https://github.com/eudoxys">Eudoxys Sciences LLC</a>
+        <br/><a href="https://github.com/eudoxys"></a>
+      </center>
+      <title class="w3-bar-item">eia</title>
+      <a href="#main" class="w3-bar-item w3-button">Command Line</a>
+      <a href="#python" class="w3-bar-item w3-button">Python Library</a>
+      <a href="#package" class="w3-bar-item w3-button">Package Metadata</a>
+    </div>
+
+    <!-- Page Content -->
+    <div style="margin-left:220px">
+
+    <h1 id="main" class="w3-container">Command Line</h1>
+
+    <p/>
+
+
+<h1 id="python" class="w3-container">Python Library</h1>
+
+
+<h2 class="w3-container">Class eia.Form861(DataFrame)</h2>
+<p/>
+The <code>Form861</code> class is a Pandas dataframe loaded with the EIA Form 861
+distributed/small scale solar data for US states starting in 2017.
+<p/>
+The data frame includes the following columns.
+<p/>
+<ul><li><code>date</code>: the primary index indicate the date on which the new valuesgo into effect.
+</li>
+<li><code>state</code>: the state for which the values are in effect.</li>
+<li><code>res_mw</code>: the residential power capacity in megaWatts.</li>
+<li><code>com_mw</code>: the commercial power capacity in megaWatts.</li>
+<li><code>ind_mw</code>: the industrial power capacity in megaWatts.</li>
+<li><code>tot_mw</code>: the total power capacity in megaWatts.</li>
+<li><code>res_mwh</code>: the residential energy production in megaWatts hours.</li>
+<li><code>com_mwh</code>: the commercial energy production in megaWatts hours.</li>
+<li><code>ind_mwh</code>: the industrial energy production in megaWatts hours.</li>
+<li><code>tot_mwh</code>: the total energy production in megaWatts hours.</li>
+</None>
+
+</ul>
+
+
+
+
+<h3 class="w3-container"><code><b>eia.Form861</b>(<b>years</b>:<i>list</i>, <b>refresh</b>:<i>bool</i>, <b>raw</b>:<i>bool</i>)</code></h3>
+<p/>
+Construct EIA Form 861 dataframe
+<p/>
+
+
+<h4 class="w3-container">Arguments</h4>
+<p/>
+<ul><li><code>years</code>: specify years to include (default 2017 to present)</li>
+<li><code>refresh</code>: refresh data cache (default <code>False</code>)</li>
+<li><code>raw</code>: disable dataframe cleanup, i.e., don't set <code>NaN</code> valuesto 0.0, construct the <code>date</code> index, or remove the <code>status</code>
+column (default <code>False</code>)
+</li>
+</None>
+
+</ul>
+
+
+<h3 class="w3-container">Static Variables</h3>
+<p/><code>CACHEDIR = None</code>
+
+
+<h1 id="package" class="w3-container">Package Metadata</h1>
+<p/>
+<table class="w3-container">
+<tr><th><nobr>Name</nobr></th><td>:</td><td>eia</td></tr>
+<tr><th><nobr>Version</nobr></th><td>:</td><td>0.0.0</td></tr>
+<tr><th><nobr>Description</nobr></th><td>:</td><td>EIA Form data accessor</td></tr>
+<tr><th><nobr>Authors</nobr></th><td>:</td><td>David P. Chassin <dchassin@eudoxys.com></td></tr>
+<tr><th><nobr>Maintainers</nobr></th><td>:</td><td>David P. Chassin <dchassin@eudoxys.com></td></tr>
+<tr><th><nobr>Requires-Python</nobr></th><td>:</td><td>>= 3.11</td></tr>
+<tr><th><nobr>Keywords</nobr></th><td>:</td><td>github<br/>python<br/>EIA<br/>Form</td></tr>
+<tr><th><nobr>License</nobr></th><td>:</td><td>MIT License</td></tr>
+<tr><th><nobr>Classifiers</nobr></th><td>:</td><td>Development Status :: 3 - Alpha<br/>Intended Audience :: Developers<br/>License :: OSI Approved :: MIT License<br/>Programming Language :: Python :: 3 :: Only<br/>Topic :: Software Development :: Libraries</td></tr>
+<tr><th><nobr>Dependencies</nobr></th><td>:</td><td>pandas<br/>openpyxl<br/>requests</td></tr>
+<tr><th><nobr>Urls</nobr></th><td>:</td><td>Homepage = <a href="https://github.com/eudoxys/eia861" target="_tab">https://github.com/eudoxys/eia861</a><br/>Documentation = <a href="https://www.eudoxys.com/eia861" target="_tab">https://www.eudoxys.com/eia861</a><br/>Repository = <a href="https://github.com/eudoxys/eia861.git" target="_tab">https://github.com/eudoxys/eia861.git</a><br/>Issues = <a href="https://github.com/eudoxys/eia861/issues" target="_tab">https://github.com/eudoxys/eia861/issues</a></td></tr>
+<tr><th><nobr>Scripts</nobr></th><td>:</td><td><code>eia</code> &rightarrow; <code>main()</code></td></tr>
+</table>
+
+
+<hr/><p/><cite>Copyright &copy; 2025 Eudoxys Sciences LLC</body>
+            </html>
