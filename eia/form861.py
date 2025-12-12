@@ -112,10 +112,13 @@ class Form861(pd.DataFrame):
                     return 0.0
             for column in [x for x in data.columns if x.endswith("_mw") or x.endswith("_mwh")]:
                 data[column] = [tofloat(x) for x in data[column]]
+            data.reset_index(inplace=True)
+            data.set_index(["date","state"],inplace=True)
+            data.sort_index(inplace=True)
         else:
             data.month = data.month.astype(int)
             data.year = data.year.astype(int)
-        super().__init__(data.reset_index().set_index(["date","state"]).sort_index())
+        super().__init__(data)
 
 if __name__ == "__main__":
 

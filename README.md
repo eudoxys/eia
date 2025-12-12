@@ -13,8 +13,14 @@ See https://www.eudoxys.com/eia
 
 ## Examples
 
+### Command line
+
+    eia --years 2020,2021 --states CA,WA -o f861.csv
+
+### Python code
+
     from eia.form861 import Form861
-    print(Form861(years=[2020]))
+    print(Form861(years=[2020,2021]))
 
 ## Issues
 
