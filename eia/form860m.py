@@ -191,5 +191,5 @@ if __name__ == '__main__':
     pd.options.display.width = None
     pd.options.display.max_columns = None
     pd.options.display.max_rows = None
-    print(Form860m(2025,9,raw=True))
+    print(Form860m(2025,9))
 
