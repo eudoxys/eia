@@ -21,8 +21,8 @@ jobs:
     
     - name: Install packages
       run: |
-        pip install --upgrade pip
-        pip -r requirements.txt pylint
+        python3 -m pip install --upgrade pip
+        python3 -m pip -r requirements.txt pylint
 
     - name: Analyse code
       run: |
