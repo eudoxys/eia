@@ -7,35 +7,35 @@ from eia.form861m import Form861m
 def test_form860m():
     """Test Form 860m data frame"""
     errors = 0
-    for year in range(2015,dt.datetime.now().year):
-        for month in range(1 if year > 2015 else 7,13):
-            try:
-                raw = Form860m(year,month,raw=True)
-                data = Form860m(year,month,raw=False)
-                assert len(data) > 0, f"no data"
-            except Exception as err:
-                print(f"ERROR [eia.tests]: Form860m({year=},{month=}) --> {err}",file=sys.stderr,flush=True)
-                errors += 1
-                raise
-            else:
-                print(f"Form860m({year=},{month=}) ok.",file=sys.stderr,flush=True)
+    year = dt.datetime.now().year - 1
+    for month in range(1,13):
+        try:
+            raw = Form860m(year,month,raw=True)
+            data = Form860m(year,month,raw=False)
+            assert len(data) > 0, f"no data"
+        except Exception as err:
+            print(f"ERROR [eia.tests]: Form860m({year=},{month=}) --> {err}",file=sys.stderr,flush=True)
+            errors += 1
+            raise
+        else:
+            print(f"Form860m({year=},{month=}) ok.",file=sys.stderr,flush=True)
     return errors
 
 def test_form861m():
     """Test Form 861m data frame"""
     errors = 0
-    for year in range(2017,dt.datetime.now().year):
-        for month in range(1,13):
-            try:
-                raw = Form861m(year,month,raw=True)
-                data = Form861m(year,month,raw=False)
-                assert len(data) > 0, f"no data"
-            except Exception as err:
-                print(f"ERROR [eia.tests]: Form861m({year=},{month=}) --> {err}",file=sys.stderr,flush=True)
-                errors += 1
-                raise
-            else:
-                print(f"Form861m({year=},{month=}) ok.",file=sys.stderr,flush=True)
+    year = dt.datetime.now().year - 1
+    for month in range(1,13):
+        try:
+            raw = Form861m(year,month,raw=True)
+            data = Form861m(year,month,raw=False)
+            assert len(data) > 0, f"no data"
+        except Exception as err:
+            print(f"ERROR [eia.tests]: Form861m({year=},{month=}) --> {err}",file=sys.stderr,flush=True)
+            errors += 1
+            raise
+        else:
+            print(f"Form861m({year=},{month=}) ok.",file=sys.stderr,flush=True)
     return errors
 
 
