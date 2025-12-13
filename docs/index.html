@@ -56,11 +56,23 @@ EIA command line processor
 The `Form860m class is a Pandas data frame loaded with the EIA Form 860m
 monthly archive of electric generator inventory.
 <p/>
-For details see <a href="https://www.eia.gov/electricity/data/eia860m/." target="_tab">https://www.eia.gov/electricity/data/eia860m/.</a>
+The data frame includes the following columns.
+<p/>
+<ul><li><code>date</code>: the primary index indicate the date on which the new values
+go into effect.
+</li>
+<li><code>state</code>: the state for which the values are in effect.
+</li>
+</None>
+
+</ul>
+
+
+If the <code>raw</code> argument is True, the original EIA data is returned.
 <p/>
 
 
-<h3 class="w3-container"><code><b>eia.Form860m</b>(int | str, int | str, <b>refresh</b>:<i>bool</i>, <b>subset</b>:<i>str</i>)</code></h3>
+<h3 class="w3-container"><code><b>eia.Form860m</b>(int | str, int | str, <b>subset</b>:<i>str</i>, <b>refresh</b>:<i>bool</i>, <b>raw</b>:<i>bool</i>)</code></h3>
 <p/>
 Construct EIA Forma 860m data frame
 <p/>
@@ -72,9 +84,11 @@ Construct EIA Forma 860m data frame
 </li>
 <li><code>month</code>: specifies the month (1 to 12)
 </li>
+<li><code>subset</code>: data subset requested
+</li>
 <li><code>refresh</code>: refresh data cache (default <code>False</code>)
 </li>
-<li><code>subset</code>: data subset requested
+<li><code>raw</code>: return raw data (default <code>False</code>)
 </li>
 </None>
 
@@ -83,6 +97,7 @@ Construct EIA Forma 860m data frame
 
 <h3 class="w3-container">Static Variables</h3>
 <p/><code>CACHEDIR = None</code>
+<p/><code>COLUMNS = {'Entity ID': ('OWNER_ID', <function _int at 0x1134367a0>), 'Entity Name': ('OWNER_NAME', <class 'str'>), 'Plant ID': ('ID', <function _int at 0x1134367a0>), 'Plant Name': ('NAME', <class 'str'>), 'Plant State': ('STATE', <class 'str'>), 'County': ('COUNTY', <class 'str'>), 'Balancing Authority Code': ('BA_CODE', <class 'str'>), 'Sector': ('SECTOR', <class 'str'>), 'Generator ID': ('GENERATOR_ID', <class 'str'>), 'Unit Code': ('UNIT_CODE', <class 'str'>), 'Nameplate Capacity (MW)': ('NAMEPLATE_MW', <function _float at 0x113436ac0>), 'Net Summer Capacity (MW)': ('SUMMER_MW', <function _float at 0x113436ac0>), 'Net Winter Capacity (MW)': ('WINTER_MW', <function _float at 0x113436ac0>), 'Technology': ('TECHNOLOGY', <class 'str'>), 'Energy Source Code': ('ENERGY_SOURCE_CODE', <class 'str'>), 'Prime Mover Code': ('PRIME_MOVER_CODE', <class 'str'>), 'Operating Month': ('OPERATING_MONTH', <function _int at 0x1134367a0>), 'Operating Year': ('OPERATING_YEAR', <function _int at 0x1134367a0>), 'Planned Retirement Month': ('PLANNED_RETIREMENT_MONTH', <function _int at 0x1134367a0>), 'Planned Retirement Year': ('PLANNED_RETIREMENT_YEAR', <function _int at 0x1134367a0>), 'Status': ('STATUS', <class 'str'>), 'Nameplate Energy Capacity (MWh)': ('NAMEPLATE_MWH', <function _float at 0x113436ac0>), 'DC Net Capacity (MW)': ('DC_NET_MW', <function _float at 0x113436ac0>), 'Planned Derate Year': ('PLANNED_DERATE_YEAR', <function _int at 0x1134367a0>), 'Planned Derate Month': ('PLANNED_DERATE_MONTH', <function _int at 0x1134367a0>), 'Planned Derate of Summer Capacity (MW)': ('DERATE_SUMMER_MW', <function _float at 0x113436ac0>), 'Planned Uprate Year': ('PLANNED_UPRATE_YEAR', <function _int at 0x1134367a0>), 'Planned Uprate Month': ('PLANNED_UPRATE_MONTH', <function _int at 0x1134367a0>), 'Planned Uprate of Summer Capacity (MW)': ('UPRATE_SUMMER_MW', <function _float at 0x113436ac0>), 'Latitude': ('LAT', <function _float at 0x113436ac0>), 'Longitude': ('LON', <function _float at 0x113436ac0>)}</code>
 <p/><code>SUBSETS = ['Operating', 'Planned', 'Retired', 'Canceled or Postponed', 'Operating_PR', 'Planned_PR', 'Retired_PR']</code>
 
 
@@ -119,6 +134,8 @@ go into effect.
 </ul>
 
 
+If the <code>raw</code> argument is True, the original EIA data is returned.
+<p/>
 
 
 <h3 class="w3-container"><code><b>eia.Form861m</b>(int | str, int | str, <b>refresh</b>:<i>bool</i>, <b>raw</b>:<i>bool</i>)</code></h3>

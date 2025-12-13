@@ -43,6 +43,8 @@ class Form861m(pd.DataFrame):
         - `ind_mwh`: the industrial energy production in megaWatts hours.
 
         - `tot_mwh`: the total energy production in megaWatts hours.
+
+    If the `raw` argument is True, the original EIA data is returned.
     """
     CACHEDIR = None
 
