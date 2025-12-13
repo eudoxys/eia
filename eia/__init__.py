@@ -9,4 +9,5 @@ Exapmle:
     eia 861
 """
 from eia.cli import main
-from eia.form861 import Form861
+from eia.form860m import Form860m
+from eia.form861m import Form861m

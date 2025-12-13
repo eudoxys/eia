@@ -2,6 +2,8 @@
 
 Supported forms:
 
+    - `860m`: Monthly generator inventory
+
     - `861`: Distributed/small scale solar PV generation
 """
 
@@ -11,20 +13,23 @@ import argparse
 import warnings
 import pandas as pd
 import numpy as np
-from eia.form861 import Form861
+from eia.form861m import Form861m
+from eia.form860m import Form860m
 
 E_OK = 0
 E_FAILED = 1
 E_SYNTAX = 2
 
-def main(*args,**kwargs):
+def main(*args:list[str]) -> int:
     """EIA form accessor main command line processor
 
     Argument:
 
-        - `*args`: command line arguments (none is sys.argv)
+        - `*args`: command line arguments (`None` is `sys.argv`)
 
-        - `**kwargs`: CLI options
+    Returns:
+
+        - `int`: return/exit code
     """
     try:
 
@@ -49,10 +54,12 @@ def main(*args,**kwargs):
         parser.add_argument("--refresh",
             action='store_true',
             help="refresh local cache data")
-        parser.add_argument("--states",
-            help="select states")
-        parser.add_argument("--years",
-            help="select years")
+        parser.add_argument("-y","--year",
+            help="select year")
+        parser.add_argument("-m","--month",
+            help="select month")
+        parser.add_argument("--subset",
+            help="data subset requested")
         parser.add_argument("--warning",
             action="store_true",
             help="enable warning message from python")
@@ -81,17 +88,9 @@ def main(*args,**kwargs):
             return E_OK
 
         # get data
-        data = globals()[f"Form{args.form}"](
-            years=[int(x) for x in args.years.split(",")] if args.years else None,
-            raw=args.raw,
-            refresh=args.refresh,
-            )\
-            .reset_index()\
-            .set_index(["date","state"])\
-            .loc[(
-                np.s_[args.years.split(",")] if args.years else np.s_[:],
-                np.s_[args.states.split(",")] if args.states else np.s_[:],
-                ),:]
+        form = globals()[f"Form{args.form}"]
+        kwargs = {x:getattr(args,x) for x in dir(args) if x[0] != "_" }
+        data = form(**form.makeargs(**kwargs))
 
         # handle default output
         if args.output is None:

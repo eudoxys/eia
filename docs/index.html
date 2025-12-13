@@ -51,9 +51,44 @@ EIA command line processor
 <h1 id="python" class="w3-container">Python Library</h1>
 
 
-<h2 class="w3-container">Class eia.Form861(DataFrame)</h2>
+<h2 class="w3-container">Class eia.Form860m(DataFrame)</h2>
 <p/>
-The <code>Form861</code> class is a Pandas dataframe loaded with the EIA Form 861
+The `Form860m class is a Pandas data frame loaded with the EIA Form 860m
+monthly archive of electric generator inventory.
+<p/>
+For details see <a href="https://www.eia.gov/electricity/data/eia860m/." target="_tab">https://www.eia.gov/electricity/data/eia860m/.</a>
+<p/>
+
+
+<h3 class="w3-container"><code><b>eia.Form860m</b>(int | str, int | str, <b>refresh</b>:<i>bool</i>, <b>subset</b>:<i>str</i>)</code></h3>
+<p/>
+Construct EIA Forma 860m data frame
+<p/>
+
+
+<h4 class="w3-container">Arguments</h4>
+<p/>
+<ul><li><code>year</code>: specifies the year (2015 to present)
+</li>
+<li><code>month</code>: specifies the month (1 to 12)
+</li>
+<li><code>refresh</code>: refresh data cache (default <code>False</code>)
+</li>
+<li><code>subset</code>: data subset requested
+</li>
+</None>
+
+</ul>
+
+
+<h3 class="w3-container">Static Variables</h3>
+<p/><code>CACHEDIR = None</code>
+<p/><code>SUBSETS = ['Operating', 'Planned', 'Retired', 'Canceled or Postponed', 'Operating_PR', 'Planned_PR', 'Retired_PR']</code>
+
+
+<h2 class="w3-container">Class eia.Form861m(DataFrame)</h2>
+<p/>
+The <code>Form861m</code> class is a Pandas data frame loaded with the EIA Form 861
 distributed/small scale solar data for US states starting in 2017.
 <p/>
 The data frame includes the following columns.
@@ -86,19 +121,21 @@ go into effect.
 
 
 
-<h3 class="w3-container"><code><b>eia.Form861</b>(<b>years</b>:<i>list</i>, <b>refresh</b>:<i>bool</i>, <b>raw</b>:<i>bool</i>)</code></h3>
+<h3 class="w3-container"><code><b>eia.Form861m</b>(int | str, int | str, <b>refresh</b>:<i>bool</i>, <b>raw</b>:<i>bool</i>)</code></h3>
 <p/>
-Construct EIA Form 861 dataframe
+Construct EIA Form 861 data frame
 <p/>
 
 
 <h4 class="w3-container">Arguments</h4>
 <p/>
-<ul><li><code>years</code>: specify years to include (default 2017 to present)
+<ul><li><code>year</code>: specifies the year (2017 to present)
+</li>
+<li><code>month</code>: specifies the month (1 to 12)
 </li>
 <li><code>refresh</code>: refresh data cache (default <code>False</code>)
 </li>
-<li><code>raw</code>: disable dataframe cleanup, i.e., don't set <code>NaN</code> values
+<li><code>raw</code>: disable data frame cleanup, i.e., don't set <code>NaN</code> values
 to 0.0, construct the <code>date</code> index, or remove the <code>status</code>
 column (default <code>False</code>)
 </li>
@@ -114,7 +151,7 @@ column (default <code>False</code>)
 <h2 id="python" class="w3-container">Module Functions</h2>
 
 
-<h3 class="w3-container"><code><b>main</b>() &rightarrow; <i>None</i></code></h3>
+<h3 class="w3-container"><code><b>main</b>(<b>args</b>:<i>list</i>) &rightarrow; <i>int</i></code></h3>
 <p/>
 EIA form accessor main command line processor
 <p/>
@@ -122,9 +159,18 @@ EIA form accessor main command line processor
 
 <h4 class="w3-container">Argument</h4>
 <p/>
-<ul><li><code>*args</code>: command line arguments (none is sys.argv)
+<ul><li><code>*args</code>: command line arguments (<code>None</code> is <code>sys.argv</code>)
 </li>
-<li><code>**kwargs</code>: CLI options
+</None>
+
+</ul>
+
+
+
+
+<h4 class="w3-container">Returns</h4>
+<p/>
+<ul><li><code>int</code>: return/exit code
 </li>
 </None>
 
