@@ -147,4 +147,7 @@ class Form861m(pd.DataFrame):
         return {x:y for x,y in kwargs.items() if x in cls.__init__.__annotations__}
 
 if __name__ == '__main__':
+    pd.options.display.width = None
+    pd.options.display.max_columns = None
+    pd.options.display.max_rows = None
     print(Form861m(2024,8,raw=True))
