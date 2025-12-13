@@ -21,11 +21,12 @@ jobs:
     
     - name: Install packages
       run: |
-        python3 -m pip install --upgrade pip
-        python3 -m pip -r requirements.txt pylint
+        pip install --upgrade pip
+        pip install -r requirements.txt
 
     - name: Analyse code
       run: |
+        pip install pylint
         cd eia
         pylint --fail-under 9 *.py
 
