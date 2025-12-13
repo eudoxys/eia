@@ -4,15 +4,15 @@ Supported forms:
 
     - `860m`: Monthly generator inventory
 
-    - `861`: Distributed/small scale solar PV generation
+    - `861m`: Monthly non-861m generator inventory (e.g., small/distributed
+      PV)
 """
 
-import os
 import sys
 import argparse
 import warnings
 import pandas as pd
-import numpy as np
+# pylint: disable=unused-import
 from eia.form861m import Form861m
 from eia.form860m import Form860m
 
@@ -31,6 +31,7 @@ def main(*args:list[str]) -> int:
 
         - `int`: return/exit code
     """
+    # pylint: disable=too-many-return-statements
     try:
 
         # support direct call to main
@@ -124,9 +125,10 @@ def main(*args:list[str]) -> int:
 
         raise ValueError(f"output format '{args.format}' for '{args.output}' is invalid")
 
+    # pylint: disable=broad-exception-caught
     except Exception as err:
 
-        if args.debug:
+        if getattr(args,"debug"):
             raise
 
         print(f"ERROR [eia]: {err}")

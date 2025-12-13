@@ -9,13 +9,11 @@ See https://www.eia.gov/electricity/data/eia860m/ for details.
 """
 
 import os
-import sys
 import datetime as dt
-import pytz
 import warnings
+import zipfile
 import pandas as pd
 import requests
-import zipfile
 
 def _int(s,default=0):
     try:
@@ -45,8 +43,17 @@ class Form860m(pd.DataFrame):
     If the `raw` argument is True, the original EIA data is returned.
     """
 
+    # pylint: disable=invalid-name
     CACHEDIR = None
-    SUBSETS = ["Operating","Planned","Retired","Canceled or Postponed","Operating_PR","Planned_PR","Retired_PR"]
+    SUBSETS = [
+        "Operating",
+        "Planned",
+        "Retired",
+        "Canceled or Postponed",
+        "Operating_PR",
+        "Planned_PR",
+        "Retired_PR",
+        ]
 
     COLUMNS = {
         "Entity ID": ("OWNER_ID",_int),
@@ -83,6 +90,8 @@ class Form860m(pd.DataFrame):
     }
 
     def __init__(self,
+        # pylint: disable=too-many-arguments,too-many-positional-arguments
+        # pylint: disable=too-many-locals,too-many-branches
         year:int|str,
         month:int|str,
         subset:str=None,
@@ -107,12 +116,12 @@ class Form860m(pd.DataFrame):
         # check arguments
         if isinstance(year,str):
             year = int(year)
-        assert isinstance(year,int), f"year must be an integer"
+        assert isinstance(year,int), "year must be an integer"
         assert 2015 <= year <= dt.datetime.now().year, f"{year=} is not valid"
 
         if isinstance(month,str):
             month = int(month)
-        assert isinstance(month,int), f"month must be an integer"
+        assert isinstance(month,int), "month must be an integer"
         assert 1 <= month <= 12, f"{month=} is not valid"
 
         if subset is None:
@@ -121,10 +130,10 @@ class Form860m(pd.DataFrame):
 
         if refresh is None:
             refresh=False
-        assert isinstance(refresh,bool), f"refresh must be Boolean"
+        assert isinstance(refresh,bool), "refresh must be Boolean"
         if raw is None:
             raw = False
-        assert isinstance(raw,bool), f"raw must be Boolean"
+        assert isinstance(raw,bool), "raw must be Boolean"
 
         # load data
         if self.CACHEDIR is None:
@@ -137,9 +146,9 @@ class Form860m(pd.DataFrame):
 
                 # download data from EIA
                 month_str = dt.date(year,month,1).strftime("%B").lower()
-                file = f"{month_str}_generator{year}.xlsx"
-                url = f"https://www.eia.gov/electricity/data/eia860m/archive/xls/{month_str}_generator{year}.xlsx"
-                req = requests.get(url)
+                url = "https://www.eia.gov/electricity/data/eia860m/"\
+                    f"archive/xls/{month_str}_generator{year}.xlsx"
+                req = requests.get(url,timeout=10)
                 assert req.status_code == 200, \
                     f"'{url}' not available (HTTP error {req.status_code})"
                 with open(cachefile,"wb") as fh:
@@ -150,7 +159,7 @@ class Form860m(pd.DataFrame):
             subsetfile = f"{cachefile.replace('.xlsx',f'_{subset.lower()}.csv.gz')}"
             if refresh or not os.path.exists(subsetfile):
                 data = pd.read_excel(cachefile,
-                    skiprows=2,
+                    skiprows=2 if year > 2020 or (year == 2020 and month > 10) else 1,
                     sheet_name=subset,
                     engine="openpyxl").dropna(subset="Plant ID")
 
@@ -161,35 +170,41 @@ class Form860m(pd.DataFrame):
                     compression="gzip" if subsetfile.endswith(".gz") else None,
                     )
             # load subset cache data
-            data = pd.read_csv(subsetfile,dtype=str if raw else None,na_filter=not raw)
+            data = pd.read_csv(subsetfile,
+                dtype=str if raw else None,
+                na_filter=not raw,
+                low_memory=False,
+                )
 
         except zipfile.BadZipFile as err:
 
-            if isinstance(data,dict) and data == {}:
+            if isinstance(data,dict) and not data:
                 warnings.warn(f"unable to read {cachefile} ({err})--"\
                     "deleting invalid cache file (try again later)")
 
             os.unlink(cachefile)
             data = None
-        
+
         if data is None:
             raise RuntimeError(f"{url=} is not valid")
 
         if not raw:
             data.drop([x for x in data.columns if x not in self.COLUMNS],inplace=True,axis=1)
             data.rename({x:y[0] for x,y in self.COLUMNS.items()},inplace=True,axis=1)
-            for key,value in self.COLUMNS.items():
-                data[value[0]] = [value[1](x) for x in data[value[0]]]
+            for value in self.COLUMNS.values():
+                data[value[0]] = [value[1](x) for x in data[value[0]]] \
+                    if value[0] in data.columns else value[1]("")
 
-        super().__init__(data)
+        super().__init__(data.sort_index())
 
     @classmethod
     def makeargs(cls,**kwargs):
-        return {x:y for x,y in kwargs.items() if x in cls.__init__.__annotations__}
+        """Return dict of accepted kwargs by this class constructor"""
+        return {x:y for x,y in kwargs.items()
+            if x in cls.__init__.__annotations__}
 
 if __name__ == '__main__':
     pd.options.display.width = None
     pd.options.display.max_columns = None
     pd.options.display.max_rows = None
     print(Form860m(2025,9))
-

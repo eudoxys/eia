@@ -10,9 +10,7 @@ See https://www.eia.gov/electricity/data/eia861m/ for details.
 """
 
 import os
-import sys
 import datetime as dt
-import pytz
 import warnings
 import pandas as pd
 import requests
@@ -46,6 +44,8 @@ class Form861m(pd.DataFrame):
 
     If the `raw` argument is True, the original EIA data is returned.
     """
+
+    # pylint: disable=invalid-name
     CACHEDIR = None
 
     def __init__(self,
@@ -90,13 +90,14 @@ class Form861m(pd.DataFrame):
         # read data from network if necessary
         if refresh or not os.path.exists(cachefile):
             filename = f"small_scale_solar_{year}.xlsx"
-            url = f"https://www.eia.gov/electricity/data/eia861m/{'archive/' if year < thisyear else ''}xls/{filename}"
-            req = requests.get(url)
+            url = "https://www.eia.gov/electricity/data/eia861m/" \
+                f"{'archive/' if year < thisyear else ''}xls/{filename}"
+            req = requests.get(url,timeout=10)
             assert req.status_code == 200, \
                 f"'{url}' not available (HTTP error {req.status_code})"
             with open(cachefile,"wb") as fh:
                 fh.write(req.content)
-        
+
         # load data from cache
         try:
             data = pd.read_excel(cachefile,
@@ -110,12 +111,13 @@ class Form861m(pd.DataFrame):
                 # na_values = ["NM","."],
                 dtype = {"state":str},
                 index_col=[0,1],
-                ).loc[year,month].reset_index()
+                ).sort_index().loc[year,month].reset_index()
+        # pylint: disable=broad-exception-caught
         except Exception as err:
             warnings.warn(f"unable to read {cachefile} ({err})--"\
                 "deleting invalid cache file (try again later)")
             data = None
-            # os.unlink(cachefile)
+            os.unlink(cachefile)
 
         if data is None:
             raise RuntimeError(f"{cachefile=} is not valid")
@@ -124,7 +126,8 @@ class Form861m(pd.DataFrame):
         if not raw:
             data.dropna(subset="status",inplace=True)
             data.fillna(0.0,inplace=True)
-            data.index = pd.DatetimeIndex([dt.date(int(y),int(m),1) for y,m in zip(data.year,data.month)])
+            data.index = pd.DatetimeIndex([dt.date(int(y),int(m),1)
+                for y,m in zip(data.year,data.month)])
             data.index.name = "date"
             data.drop(["year","month","status"],axis=1,inplace=True)
             def tofloat(x):
@@ -140,7 +143,7 @@ class Form861m(pd.DataFrame):
         else:
             data.month = data.month.astype(int)
             data.year = data.year.astype(int)
-        super().__init__(data)
+        super().__init__(data.sort_index())
 
     @classmethod
     def makeargs(cls,**kwargs):
@@ -150,4 +153,4 @@ if __name__ == '__main__':
     pd.options.display.width = None
     pd.options.display.max_columns = None
     pd.options.display.max_rows = None
-    print(Form861m(2024,8,raw=True))
+    print(Form861m(2024,8))
