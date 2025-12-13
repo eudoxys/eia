@@ -1,3 +1,5 @@
+[![validate](https://github.com/eudoxys/eia/actions/workflows/validate.yaml/badge.svg)](https://github.com/eudoxys/eia/actions/workflows/validate.yaml)
+
 Access the following EIA Form data
 
   - Form 861: Distribution/small scale solar generation capacity and
