@@ -29,7 +29,7 @@ def _float(s,default=float('nan')):
         return default
 
 class Form860m(pd.DataFrame):
-    """The `Form860m class is a Pandas data frame loaded with the EIA Form 860m
+    """The `Form860m` class is a Pandas data frame loaded with the EIA Form 860m
     monthly archive of electric generator inventory.
 
     The data frame includes the following columns.
