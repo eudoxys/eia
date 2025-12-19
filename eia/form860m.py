@@ -44,6 +44,8 @@ class Form860m(pd.DataFrame):
 
     # pylint: disable=invalid-name
     CACHEDIR = None
+    """Folder in which downloaded files are cached (default is `{package}/.cache`)"""
+
     SUBSETS = [
         "Operating",
         "Planned",
@@ -53,6 +55,7 @@ class Form860m(pd.DataFrame):
         "Planned_PR",
         "Retired_PR",
         ]
+    """Available generation fleet subsets"""
 
     COLUMNS = {
         "Entity ID": ("OWNER_ID",_int),
@@ -87,6 +90,7 @@ class Form860m(pd.DataFrame):
         "Latitude": ("LAT",_float),
         "Longitude": ("LON",_float)
     }
+    """Table mapping EIA data columns to `eia.form860m.Format860M` data frame columns"""
 
     def __init__(self,
         # pylint: disable=too-many-arguments,too-many-positional-arguments

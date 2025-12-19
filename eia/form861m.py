@@ -47,6 +47,7 @@ class Form861m(pd.DataFrame):
 
     # pylint: disable=invalid-name
     CACHEDIR = None
+    """Folder in which downloaded files are cached (default is `{package}/.cache`)"""
 
     def __init__(self,
         year:int|str,
