@@ -2,15 +2,51 @@
 
 The `eia` package downloads and structure EIA form data for bulk power systems.
 
-Currently supported form:
+# Usage
+    
+    eia [-h] [-o OUTPUT] [--raw] [--refresh] 
+        [-y YEAR] [-m MONTH] [--subset SUBSET] 
+        [--warning] [--debug] 
+        [--format {csv,gzip,zip,xlsx}]
+        {861m,860m,help}
+
+# Positional arguments
+
+- `860m`: EIA Form 860m
+
+- `861m`: EIA Form 861m
+
+- `help`: get online help
+
+# Options
+
+-  `-h`, `--help`: show this help message and exit
+
+-  `-o OUTPUT`, `--output OUTPUT`: set output file name
+
+- `--raw`: access raw EIA form data
+
+- `--refresh`: refresh local cache data
+
+- `-y YEAR`, `--year YEAR`: select year
+
+- `-m MONTH`, `--month MONTH`: select month
+
+- `--subset SUBSET`: data subset requested
+
+- `--warning`: enable warning message from python
+
+- `--debug`: enable debug traceback on exceptions
+
+- `--format {csv,gzip,zip,xlsx}`: specify output format
+
+# Supported forms
+
+Currently supported forms are
 
 - `eia.form860m.Form860m`: Bulk power system generation fleet (1MW capacity cut-off)
 
 - `eia.form861m.Form861m`: Distributed generation capacity and energy data (1MW capacity cut-off)
-
-# Usage
-
-    eia [-h] [-o OUTPUT] [-y YEAR] [-m MONTH] FORM
 
 # Installation
 
