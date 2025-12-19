@@ -4,9 +4,9 @@ The `eia` package downloads and structure EIA form data for bulk power systems.
 
 # Usage
     
-    eia [-h] [-o OUTPUT] [--raw] [--refresh] 
-        [-y YEAR] [-m MONTH] [--subset SUBSET] 
-        [--warning] [--debug] 
+    eia [-y YEAR] [-m MONTH] [--subset SUBSET] 
+        [-o|--output OUTPUT] [--raw] [--refresh] 
+        [-h|--help] [--warning] [--debug] 
         [--format {csv,gzip,zip,xlsx}]
         {861m,860m,help}
 

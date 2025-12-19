@@ -9,8 +9,13 @@ from eia.form861m import Form861m
 from eia.form860m import Form860m
 
 E_OK = 0
+"""Exit code on success"""
+
 E_FAILED = 1
+"""Exit code on failure"""
+
 E_SYNTAX = 2
+"""Exit code on syntax error"""
 
 def main(*args:list[str]) -> int:
     """EIA form accessor main command line processor
