@@ -21,28 +21,28 @@ class Form861m(pd.DataFrame):
 
     The data frame includes the following columns.
 
-        - `date`: the primary index indicate the date on which the new values
-          go into effect.
+    - `date`: the primary index indicate the date on which the new values
+      go into effect.
 
-        - `state`: the state for which the values are in effect.
+    - `state`: the state for which the values are in effect.
 
-        - `res_mw`: the residential power capacity in megaWatts.
+    - `res_mw`: the residential power capacity in megaWatts.
 
-        - `com_mw`: the commercial power capacity in megaWatts.
+    - `com_mw`: the commercial power capacity in megaWatts.
 
-        - `ind_mw`: the industrial power capacity in megaWatts.
+    - `ind_mw`: the industrial power capacity in megaWatts.
 
-        - `tot_mw`: the total power capacity in megaWatts.
+    - `tot_mw`: the total power capacity in megaWatts.
 
-        - `res_mwh`: the residential energy production in megaWatts hours.
+    - `res_mwh`: the residential energy production in megaWatts hours.
 
-        - `com_mwh`: the commercial energy production in megaWatts hours.
+    - `com_mwh`: the commercial energy production in megaWatts hours.
 
-        - `ind_mwh`: the industrial energy production in megaWatts hours.
+    - `ind_mwh`: the industrial energy production in megaWatts hours.
 
-        - `tot_mwh`: the total energy production in megaWatts hours.
+    - `tot_mwh`: the total energy production in megaWatts hours.
 
-    If the `raw` argument is True, the original EIA data is returned.
+    If the `raw` argument is `True`, the original EIA data is returned.
     """
 
     # pylint: disable=invalid-name
@@ -56,17 +56,17 @@ class Form861m(pd.DataFrame):
         ):
         """Construct EIA Form 861 data frame
 
-        Arguments:
+        # Arguments
 
-            - `year`: specifies the year (2017 to present)
+        - `year`: specifies the year (2017 to present)
 
-            - `month`: specifies the month (1 to 12)
+        - `month`: specifies the month (1 to 12)
 
-            - `refresh`: refresh data cache (default `False`)
+        - `refresh`: refresh data cache (default `False`)
 
-            - `raw`: disable data frame cleanup, i.e., don't set `NaN` values
-              to 0.0, construct the `date` index, or remove the `status`
-              column (default `False`)
+        - `raw`: disable data frame cleanup, i.e., don't set `NaN` values
+          to 0.0, construct the `date` index, or remove the `status`
+          column (default `False`)
         """
 
         if isinstance(year,str):
@@ -147,7 +147,7 @@ class Form861m(pd.DataFrame):
 
     @classmethod
     def makeargs(cls,**kwargs):
-        """Return dict of accepted kwargs by this class constructor"""
+        """@private Return dict of accepted kwargs by this class constructor"""
         return {x:y for x,y in kwargs.items() if x in cls.__init__.__annotations__}
 
 if __name__ == '__main__':
