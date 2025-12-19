@@ -1,5 +1,39 @@
 """EIA Form data accessor
 
+# usage
+    
+    eia [-h] [-o OUTPUT] [--raw] [--refresh] 
+        [-y YEAR] [-m MONTH] [--subset SUBSET] 
+        [--warning] [--debug] 
+        [--format {csv,gzip,zip,xlsx}]
+        {861m,860m,help}
+
+# Positional arguments
+
+  {861m,860m,help}
+
+# Options
+
+-  `-h`, `--help`: show this help message and exit
+
+-  `-o OUTPUT`, `--output OUTPUT`: set output file name
+
+- `--raw`: access raw EIA form data
+
+- `--refresh`: refresh local cache data
+
+- `-y YEAR`, `--year YEAR`: select year
+
+- `-m MONTH`, `--month MONTH`: select month
+
+- `--subset SUBSET`: data subset requested
+
+- `--warning`: enable warning message from python
+
+- `--debug`: enable debug traceback on exceptions
+
+- `--format {csv,gzip,zip,xlsx}`: specify output format
+
 Supported forms:
 
     - `860m`: Monthly generator inventory
