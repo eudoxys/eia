@@ -10,7 +10,7 @@ Currently supported form:
 
 # Usage
 
-    eia [-h] [-o OUTPUT] FORM
+    eia [-h] [-o OUTPUT] [-y YEAR] [-m MONTH] FORM
 
 # Installation
 
@@ -22,7 +22,7 @@ Currently supported form:
 
 Get the Form 860m generator data
 
-    eia 860m
+    eia 860m -y 2020 -m 8
 
 # Package information
 
