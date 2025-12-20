@@ -70,7 +70,12 @@ Get the Form 860m generator data
 
 - License: https://github.com/eudoxys/eia/blob/main/LICENSE
 
-- Requirements: https://github.com/eudoxys/eia/blob/main/requirements.txt
+- Dependencies: 
+
+    - [pandas](https://pypi.org/project/pandas/)
+    - [openpyxl](https://pypi.org/project/openpyxl/)
+    - [requests](https://pypi.org/project/requests/)
+
 
 ----
 """
