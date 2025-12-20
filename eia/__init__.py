@@ -1,4 +1,4 @@
-"""EIA command line processor
+"""EIA Form Data Accessor
 
 The `eia` package downloads and structure EIA form data for bulk power systems.
 
