@@ -59,7 +59,7 @@ Currently supported forms are
 
 ## Shell
 
-Get the Form 860m generator data
+Get the state-level distributed generation data for August 2020
 
     eia 861m --year 2020 --month 8
 
@@ -80,6 +80,8 @@ Outputs
                WY        6.272     1.393     0.276      7.941     1080.503     248.006      49.268     1377.776
 
 ## Python
+
+Get the state-level distributed generation data for August 2020
 
     from eia.form861m import Form861m
     print(Form861m(years=2020,month=8))

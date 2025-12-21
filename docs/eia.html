@@ -131,7 +131,7 @@ pip install git+https://github.com/eudoxys/eia
 
 <h2 id="shell">Shell</h2>
 
-<p>Get the Form 860m generator data</p>
+<p>Get the state-level distributed generation data for August 2020</p>
 
 <pre><code>eia 861m --year 2020 --month 8
 </code></pre>
@@ -154,6 +154,8 @@ date       state
 </code></pre>
 
 <h2 id="python">Python</h2>
+
+<p>Get the state-level distributed generation data for August 2020</p>
 
 <pre><code>from <a href="eia/form861m.html">eia.form861m</a> import Form861m
 print(Form861m(years=2020,month=8))
@@ -260,7 +262,7 @@ date       state
 </span><span id="L-59"><a href="#L-59"><span class="linenos"> 59</span></a>
 </span><span id="L-60"><a href="#L-60"><span class="linenos"> 60</span></a><span class="sd">## Shell</span>
 </span><span id="L-61"><a href="#L-61"><span class="linenos"> 61</span></a>
-</span><span id="L-62"><a href="#L-62"><span class="linenos"> 62</span></a><span class="sd">Get the Form 860m generator data</span>
+</span><span id="L-62"><a href="#L-62"><span class="linenos"> 62</span></a><span class="sd">Get the state-level distributed generation data for August 2020</span>
 </span><span id="L-63"><a href="#L-63"><span class="linenos"> 63</span></a>
 </span><span id="L-64"><a href="#L-64"><span class="linenos"> 64</span></a><span class="sd">    eia 861m --year 2020 --month 8</span>
 </span><span id="L-65"><a href="#L-65"><span class="linenos"> 65</span></a>
@@ -282,47 +284,49 @@ date       state
 </span><span id="L-81"><a href="#L-81"><span class="linenos"> 81</span></a>
 </span><span id="L-82"><a href="#L-82"><span class="linenos"> 82</span></a><span class="sd">## Python</span>
 </span><span id="L-83"><a href="#L-83"><span class="linenos"> 83</span></a>
-</span><span id="L-84"><a href="#L-84"><span class="linenos"> 84</span></a><span class="sd">    from eia.form861m import Form861m</span>
-</span><span id="L-85"><a href="#L-85"><span class="linenos"> 85</span></a><span class="sd">    print(Form861m(years=2020,month=8))</span>
-</span><span id="L-86"><a href="#L-86"><span class="linenos"> 86</span></a>
-</span><span id="L-87"><a href="#L-87"><span class="linenos"> 87</span></a><span class="sd">Outputs</span>
+</span><span id="L-84"><a href="#L-84"><span class="linenos"> 84</span></a><span class="sd">Get the state-level distributed generation data for August 2020</span>
+</span><span id="L-85"><a href="#L-85"><span class="linenos"> 85</span></a>
+</span><span id="L-86"><a href="#L-86"><span class="linenos"> 86</span></a><span class="sd">    from eia.form861m import Form861m</span>
+</span><span id="L-87"><a href="#L-87"><span class="linenos"> 87</span></a><span class="sd">    print(Form861m(years=2020,month=8))</span>
 </span><span id="L-88"><a href="#L-88"><span class="linenos"> 88</span></a>
-</span><span id="L-89"><a href="#L-89"><span class="linenos"> 89</span></a><span class="sd">                        res_mw    com_mw    ind_mw     tot_mw      res_mwh     com_mwh     ind_mwh      tot_mwh</span>
-</span><span id="L-90"><a href="#L-90"><span class="linenos"> 90</span></a><span class="sd">    date       state                                                                                           </span>
-</span><span id="L-91"><a href="#L-91"><span class="linenos"> 91</span></a><span class="sd">    2020-08-01 AK        5.405     1.473     0.043      6.921      701.497     193.737       6.117      901.351</span>
-</span><span id="L-92"><a href="#L-92"><span class="linenos"> 92</span></a><span class="sd">               AL        0.000     0.000     0.611      0.000        0.000       0.000      99.501        0.000</span>
-</span><span id="L-93"><a href="#L-93"><span class="linenos"> 93</span></a><span class="sd">               AR       24.698    13.600    15.846     54.144     4164.484    2334.792    2719.254     9218.530</span>
-</span><span id="L-94"><a href="#L-94"><span class="linenos"> 94</span></a><span class="sd">               AZ     1138.607   426.052     6.630   1571.289   186103.677   74192.920    1197.221   261493.818</span>
-</span><span id="L-95"><a href="#L-95"><span class="linenos"> 95</span></a><span class="sd">               CA     6415.725  2253.064  1341.708  10010.497  1096187.879  411763.930  257364.943  1765316.752</span>
-</span><span id="L-96"><a href="#L-96"><span class="linenos"> 96</span></a><span class="sd">    ...</span>
-</span><span id="L-97"><a href="#L-97"><span class="linenos"> 97</span></a><span class="sd">               VT       81.463    48.205     1.387    131.055    11607.382    7360.232     208.949    19176.563</span>
-</span><span id="L-98"><a href="#L-98"><span class="linenos"> 98</span></a><span class="sd">               WA      163.265    27.214     0.410    190.889    26775.955    4551.384      72.101    31399.440</span>
-</span><span id="L-99"><a href="#L-99"><span class="linenos"> 99</span></a><span class="sd">               WI       41.373    39.805    13.853     95.031     6365.008    6313.855    2171.008    14849.871</span>
-</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a><span class="sd">               WV        6.987     3.127     0.058     10.172     1071.614     486.645       9.013     1567.273</span>
-</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a><span class="sd">               WY        6.272     1.393     0.276      7.941     1080.503     248.006      49.268     1377.776</span>
-</span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a>
-</span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a><span class="sd"># Package information</span>
+</span><span id="L-89"><a href="#L-89"><span class="linenos"> 89</span></a><span class="sd">Outputs</span>
+</span><span id="L-90"><a href="#L-90"><span class="linenos"> 90</span></a>
+</span><span id="L-91"><a href="#L-91"><span class="linenos"> 91</span></a><span class="sd">                        res_mw    com_mw    ind_mw     tot_mw      res_mwh     com_mwh     ind_mwh      tot_mwh</span>
+</span><span id="L-92"><a href="#L-92"><span class="linenos"> 92</span></a><span class="sd">    date       state                                                                                           </span>
+</span><span id="L-93"><a href="#L-93"><span class="linenos"> 93</span></a><span class="sd">    2020-08-01 AK        5.405     1.473     0.043      6.921      701.497     193.737       6.117      901.351</span>
+</span><span id="L-94"><a href="#L-94"><span class="linenos"> 94</span></a><span class="sd">               AL        0.000     0.000     0.611      0.000        0.000       0.000      99.501        0.000</span>
+</span><span id="L-95"><a href="#L-95"><span class="linenos"> 95</span></a><span class="sd">               AR       24.698    13.600    15.846     54.144     4164.484    2334.792    2719.254     9218.530</span>
+</span><span id="L-96"><a href="#L-96"><span class="linenos"> 96</span></a><span class="sd">               AZ     1138.607   426.052     6.630   1571.289   186103.677   74192.920    1197.221   261493.818</span>
+</span><span id="L-97"><a href="#L-97"><span class="linenos"> 97</span></a><span class="sd">               CA     6415.725  2253.064  1341.708  10010.497  1096187.879  411763.930  257364.943  1765316.752</span>
+</span><span id="L-98"><a href="#L-98"><span class="linenos"> 98</span></a><span class="sd">    ...</span>
+</span><span id="L-99"><a href="#L-99"><span class="linenos"> 99</span></a><span class="sd">               VT       81.463    48.205     1.387    131.055    11607.382    7360.232     208.949    19176.563</span>
+</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a><span class="sd">               WA      163.265    27.214     0.410    190.889    26775.955    4551.384      72.101    31399.440</span>
+</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a><span class="sd">               WI       41.373    39.805    13.853     95.031     6365.008    6313.855    2171.008    14849.871</span>
+</span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a><span class="sd">               WV        6.987     3.127     0.058     10.172     1071.614     486.645       9.013     1567.273</span>
+</span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a><span class="sd">               WY        6.272     1.393     0.276      7.941     1080.503     248.006      49.268     1377.776</span>
 </span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a>
-</span><span id="L-105"><a href="#L-105"><span class="linenos">105</span></a><span class="sd">- Source code: https://github.com/eudoxys/eia</span>
+</span><span id="L-105"><a href="#L-105"><span class="linenos">105</span></a><span class="sd"># Package information</span>
 </span><span id="L-106"><a href="#L-106"><span class="linenos">106</span></a>
-</span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a><span class="sd">- Documentation: https://www.eudoxys.com/eia</span>
+</span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a><span class="sd">- Source code: https://github.com/eudoxys/eia</span>
 </span><span id="L-108"><a href="#L-108"><span class="linenos">108</span></a>
-</span><span id="L-109"><a href="#L-109"><span class="linenos">109</span></a><span class="sd">- Issues: https://github.com/eudoxys/eia/issues</span>
+</span><span id="L-109"><a href="#L-109"><span class="linenos">109</span></a><span class="sd">- Documentation: https://www.eudoxys.com/eia</span>
 </span><span id="L-110"><a href="#L-110"><span class="linenos">110</span></a>
-</span><span id="L-111"><a href="#L-111"><span class="linenos">111</span></a><span class="sd">- License: https://github.com/eudoxys/eia/blob/main/LICENSE</span>
+</span><span id="L-111"><a href="#L-111"><span class="linenos">111</span></a><span class="sd">- Issues: https://github.com/eudoxys/eia/issues</span>
 </span><span id="L-112"><a href="#L-112"><span class="linenos">112</span></a>
-</span><span id="L-113"><a href="#L-113"><span class="linenos">113</span></a><span class="sd">- Dependencies: </span>
+</span><span id="L-113"><a href="#L-113"><span class="linenos">113</span></a><span class="sd">- License: https://github.com/eudoxys/eia/blob/main/LICENSE</span>
 </span><span id="L-114"><a href="#L-114"><span class="linenos">114</span></a>
-</span><span id="L-115"><a href="#L-115"><span class="linenos">115</span></a><span class="sd">    - [pandas](https://pypi.org/project/pandas/)</span>
-</span><span id="L-116"><a href="#L-116"><span class="linenos">116</span></a><span class="sd">    - [openpyxl](https://pypi.org/project/openpyxl/)</span>
-</span><span id="L-117"><a href="#L-117"><span class="linenos">117</span></a><span class="sd">    - [requests](https://pypi.org/project/requests/)</span>
-</span><span id="L-118"><a href="#L-118"><span class="linenos">118</span></a>
-</span><span id="L-119"><a href="#L-119"><span class="linenos">119</span></a>
-</span><span id="L-120"><a href="#L-120"><span class="linenos">120</span></a><span class="sd">----</span>
-</span><span id="L-121"><a href="#L-121"><span class="linenos">121</span></a><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="L-122"><a href="#L-122"><span class="linenos">122</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">eia.cli</span><span class="w"> </span><span class="kn">import</span> <span class="n">main</span>
-</span><span id="L-123"><a href="#L-123"><span class="linenos">123</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">eia.form860m</span><span class="w"> </span><span class="kn">import</span> <span class="n">Form860m</span>
-</span><span id="L-124"><a href="#L-124"><span class="linenos">124</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">eia.form861m</span><span class="w"> </span><span class="kn">import</span> <span class="n">Form861m</span>
+</span><span id="L-115"><a href="#L-115"><span class="linenos">115</span></a><span class="sd">- Dependencies: </span>
+</span><span id="L-116"><a href="#L-116"><span class="linenos">116</span></a>
+</span><span id="L-117"><a href="#L-117"><span class="linenos">117</span></a><span class="sd">    - [pandas](https://pypi.org/project/pandas/)</span>
+</span><span id="L-118"><a href="#L-118"><span class="linenos">118</span></a><span class="sd">    - [openpyxl](https://pypi.org/project/openpyxl/)</span>
+</span><span id="L-119"><a href="#L-119"><span class="linenos">119</span></a><span class="sd">    - [requests](https://pypi.org/project/requests/)</span>
+</span><span id="L-120"><a href="#L-120"><span class="linenos">120</span></a>
+</span><span id="L-121"><a href="#L-121"><span class="linenos">121</span></a>
+</span><span id="L-122"><a href="#L-122"><span class="linenos">122</span></a><span class="sd">----</span>
+</span><span id="L-123"><a href="#L-123"><span class="linenos">123</span></a><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="L-124"><a href="#L-124"><span class="linenos">124</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">eia.cli</span><span class="w"> </span><span class="kn">import</span> <span class="n">main</span>
+</span><span id="L-125"><a href="#L-125"><span class="linenos">125</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">eia.form860m</span><span class="w"> </span><span class="kn">import</span> <span class="n">Form860m</span>
+</span><span id="L-126"><a href="#L-126"><span class="linenos">126</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">eia.form861m</span><span class="w"> </span><span class="kn">import</span> <span class="n">Form861m</span>
 </span></pre></div>
 
 
