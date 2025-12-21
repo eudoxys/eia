@@ -84,7 +84,7 @@ eia    </h1>
 <pre><code>eia [-y YEAR] [-m MONTH] [--subset SUBSET] 
     [-o|--output OUTPUT] [--raw] [--refresh] 
     [-h|--help] [--warning] [--debug] 
-    [--format {csv,gzip,zip,xlsx}]
+    [-f|--format {csv,gzip,zip,xlsx}]
     {861m,860m,help}
 </code></pre>
 
@@ -99,8 +99,8 @@ eia    </h1>
 <h1 id="options">Options</h1>
 
 <ul>
-<li><p><code>-h</code>, <code>--help</code>: show this help message and exit</p></li>
-<li><p><code>-o OUTPUT</code>, <code>--output OUTPUT</code>: set output file name</p></li>
+<li><p><code>-h|--help</code>: show this help message and exit</p></li>
+<li><p><code>-o|--output OUTPUT</code>: set output file name</p></li>
 <li><p><code>--raw</code>: access raw EIA form data</p></li>
 <li><p><code>--refresh</code>: refresh local cache data</p></li>
 <li><p><code>-y YEAR</code>, <code>--year YEAR</code>: select year</p></li>
@@ -108,7 +108,7 @@ eia    </h1>
 <li><p><code>--subset SUBSET</code>: data subset requested</p></li>
 <li><p><code>--warning</code>: enable warning message from python</p></li>
 <li><p><code>--debug</code>: enable debug traceback on exceptions</p></li>
-<li><p><code>--format {csv,gzip,zip,xlsx}</code>: specify output format</p></li>
+<li><p><code>-f|--format {csv,gzip,zip,xlsx}</code>: specify output format</p></li>
 </ul>
 
 <h1 id="supported-forms">Supported forms</h1>
@@ -208,7 +208,7 @@ date       state
 </span><span id="L-7"><a href="#L-7"><span class="linenos">  7</span></a><span class="sd">    eia [-y YEAR] [-m MONTH] [--subset SUBSET] </span>
 </span><span id="L-8"><a href="#L-8"><span class="linenos">  8</span></a><span class="sd">        [-o|--output OUTPUT] [--raw] [--refresh] </span>
 </span><span id="L-9"><a href="#L-9"><span class="linenos">  9</span></a><span class="sd">        [-h|--help] [--warning] [--debug] </span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos"> 10</span></a><span class="sd">        [--format {csv,gzip,zip,xlsx}]</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos"> 10</span></a><span class="sd">        [-f|--format {csv,gzip,zip,xlsx}]</span>
 </span><span id="L-11"><a href="#L-11"><span class="linenos"> 11</span></a><span class="sd">        {861m,860m,help}</span>
 </span><span id="L-12"><a href="#L-12"><span class="linenos"> 12</span></a>
 </span><span id="L-13"><a href="#L-13"><span class="linenos"> 13</span></a><span class="sd"># Positional arguments</span>
@@ -221,9 +221,9 @@ date       state
 </span><span id="L-20"><a href="#L-20"><span class="linenos"> 20</span></a>
 </span><span id="L-21"><a href="#L-21"><span class="linenos"> 21</span></a><span class="sd"># Options</span>
 </span><span id="L-22"><a href="#L-22"><span class="linenos"> 22</span></a>
-</span><span id="L-23"><a href="#L-23"><span class="linenos"> 23</span></a><span class="sd">-  `-h`, `--help`: show this help message and exit</span>
+</span><span id="L-23"><a href="#L-23"><span class="linenos"> 23</span></a><span class="sd">-  `-h|--help`: show this help message and exit</span>
 </span><span id="L-24"><a href="#L-24"><span class="linenos"> 24</span></a>
-</span><span id="L-25"><a href="#L-25"><span class="linenos"> 25</span></a><span class="sd">-  `-o OUTPUT`, `--output OUTPUT`: set output file name</span>
+</span><span id="L-25"><a href="#L-25"><span class="linenos"> 25</span></a><span class="sd">-  `-o|--output OUTPUT`: set output file name</span>
 </span><span id="L-26"><a href="#L-26"><span class="linenos"> 26</span></a>
 </span><span id="L-27"><a href="#L-27"><span class="linenos"> 27</span></a><span class="sd">- `--raw`: access raw EIA form data</span>
 </span><span id="L-28"><a href="#L-28"><span class="linenos"> 28</span></a>
@@ -239,7 +239,7 @@ date       state
 </span><span id="L-38"><a href="#L-38"><span class="linenos"> 38</span></a>
 </span><span id="L-39"><a href="#L-39"><span class="linenos"> 39</span></a><span class="sd">- `--debug`: enable debug traceback on exceptions</span>
 </span><span id="L-40"><a href="#L-40"><span class="linenos"> 40</span></a>
-</span><span id="L-41"><a href="#L-41"><span class="linenos"> 41</span></a><span class="sd">- `--format {csv,gzip,zip,xlsx}`: specify output format</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos"> 41</span></a><span class="sd">- `-f|--format {csv,gzip,zip,xlsx}`: specify output format</span>
 </span><span id="L-42"><a href="#L-42"><span class="linenos"> 42</span></a>
 </span><span id="L-43"><a href="#L-43"><span class="linenos"> 43</span></a><span class="sd"># Supported forms</span>
 </span><span id="L-44"><a href="#L-44"><span class="linenos"> 44</span></a>

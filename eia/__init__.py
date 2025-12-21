@@ -7,7 +7,7 @@ The `eia` package downloads and structures EIA form data for bulk power systems.
     eia [-y YEAR] [-m MONTH] [--subset SUBSET] 
         [-o|--output OUTPUT] [--raw] [--refresh] 
         [-h|--help] [--warning] [--debug] 
-        [--format {csv,gzip,zip,xlsx}]
+        [-f|--format {csv,gzip,zip,xlsx}]
         {861m,860m,help}
 
 # Positional arguments
@@ -20,9 +20,9 @@ The `eia` package downloads and structures EIA form data for bulk power systems.
 
 # Options
 
--  `-h`, `--help`: show this help message and exit
+-  `-h|--help`: show this help message and exit
 
--  `-o OUTPUT`, `--output OUTPUT`: set output file name
+-  `-o|--output OUTPUT`: set output file name
 
 - `--raw`: access raw EIA form data
 
@@ -38,7 +38,7 @@ The `eia` package downloads and structures EIA form data for bulk power systems.
 
 - `--debug`: enable debug traceback on exceptions
 
-- `--format {csv,gzip,zip,xlsx}`: specify output format
+- `-f|--format {csv,gzip,zip,xlsx}`: specify output format
 
 # Supported forms
 
