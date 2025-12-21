@@ -46,7 +46,7 @@ class Form860m(pd.DataFrame):
     CACHEDIR = None
     """Folder in which downloaded files are cached (default is `{package}/.cache`)"""
 
-    SUBSETS = [
+    SUBSETS = {
         "Operating",
         "Planned",
         "Retired",
@@ -54,7 +54,7 @@ class Form860m(pd.DataFrame):
         "Operating_PR",
         "Planned_PR",
         "Retired_PR",
-        ]
+        }
     """Available generation fleet subsets"""
 
     COLUMNS = {
@@ -210,4 +210,4 @@ if __name__ == '__main__':
     pd.options.display.width = None
     pd.options.display.max_columns = None
     pd.options.display.max_rows = None
-    print(Form860m(2025,9))
+    print(Form860m(2025,9,subset="Planned"))

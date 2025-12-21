@@ -17,12 +17,12 @@ See https://www.eudoxys.com/eia
 
 ### Command line
 
-    eia --years 2020,2021 --states CA,WA -o f861.csv
+    eia 861m --years 2020 --month 8 -o f861.csv
 
 ### Python code
 
-    from eia.form861 import Form861
-    print(Form861(years=[2020,2021]))
+    from eia.form861m import Form861m
+    print(Form861m(years=2020,month=8))
 
 ## Issues
 

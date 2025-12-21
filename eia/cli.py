@@ -64,7 +64,7 @@ def main(*args:list[str]) -> int:
         parser.add_argument("--debug",
             action="store_true",
             help="enable debug traceback on exceptions")
-        parser.add_argument("--format",
+        parser.add_argument("-f","--format",
             choices=["csv","gzip","zip","xlsx"],
             help="specify output format")
 
