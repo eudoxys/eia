@@ -2,8 +2,12 @@
 
 Access the following EIA Form data
 
-  - Form 861: Distribution/small scale solar generation capacity and
-    production by year and state
+  - Form 860m: Bulk system generation monthly capacity and production
+
+  - Form 861m: Distributed/small scale month generation capacity and
+    production
+
+  - HS 861: Customer monthly energy consumption
 
 ## Documentation
 
