@@ -1,4 +1,4 @@
 pandas
 openpyxl
 requests
-git+https://github.com/eudoxys/cache
+cache @ git+https://github.com/eudoxys/cache

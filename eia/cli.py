@@ -5,8 +5,10 @@ import argparse
 import warnings
 import pandas as pd
 # pylint: disable=unused-import
+from eia import __doc__ as docs
 from eia.form861m import Form861m
 from eia.form860m import Form860m
+from eia.hs861m import HS861m
 
 E_OK = 0
 """Exit code on success"""
@@ -16,6 +18,12 @@ E_FAILED = 1
 
 E_SYNTAX = 2
 """Exit code on syntax error"""
+
+_FORMS = {
+    "bulk_generation": Form861m,
+    "customer_demand": HS861m,
+    "distributed_generation": Form861m,
+}
 
 def main(*args:list[str]) -> int:
     """EIA form accessor main command line processor
@@ -45,7 +53,7 @@ def main(*args:list[str]) -> int:
                 "Use `eia help` to get a description of available forms."
             )
         parser.add_argument("form",
-            choices=[x[4:] for x in globals() if x.startswith("Form")]+["help"])
+            choices=list(_FORMS) + ["help"])
         parser.add_argument("-o","--output",
             help="set output file name")
         parser.add_argument("--raw",
@@ -84,11 +92,11 @@ def main(*args:list[str]) -> int:
 
         # handle help request
         if args.form == "help":
-            print(__doc__)
+            print(docs)
             return E_OK
 
         # get data
-        form = globals()[f"Form{args.form}"]
+        form = _FORMS[args.form]
         kwargs = {x:getattr(args,x) for x in dir(args) if x[0] != "_" }
         data = form(**form.makeargs(**kwargs))
 

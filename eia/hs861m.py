@@ -85,6 +85,10 @@ class HS861m(pd.DataFrame):
 
         super().__init__(data.loc[f"{year}-{month}"])
 
+    @classmethod
+    def makeargs(cls,**kwargs):
+        """@private Return dict of accepted kwargs by this class constructor"""
+        return {x:y for x,y in kwargs.items() if x in cls.__init__.__annotations__}
 
 if __name__ == "__main__":
 
