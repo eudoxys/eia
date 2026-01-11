@@ -6,7 +6,10 @@ distributed/small scale solar not included in the Form 860 or Form 923 data.
 The `Form861m` class is a Pandas data frame with both capacity (MW) and energy (MWh)
 data for each year, month, and state in the US since 2017.
 
-See https://www.eia.gov/electricity/data/eia861m/ for details.
+References
+----------
+
+  - https://www.eia.gov/electricity/data/eia861m/
 """
 
 import os

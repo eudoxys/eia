@@ -5,7 +5,10 @@ electric generator inventory.
 
 The `Form860m` class is a Pandas data frame.
 
-See https://www.eia.gov/electricity/data/eia860m/ for details.
+References
+----------
+
+  - https://www.eia.gov/electricity/data/eia860m/
 """
 
 import os

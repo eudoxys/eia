@@ -1,4 +1,13 @@
-"""Form 861m customer data accessor"""
+"""Form 861m customer data accessor
+
+The `hs861m` module is used to access EIA Form 861 data archive of monthly
+customer energy consumption.
+
+References
+----------
+
+  - https://www.eia.gov/electricity/data/eia861m/
+"""
 
 import pandas as pd
 from cache import Cache
@@ -13,7 +22,51 @@ class HS861m(pd.DataFrame):
     CACHEDIR = None
 
     SOURCE = "https://www.eia.gov/electricity/data/eia861m/xls/sales_revenue.xlsx"
-    """EIA data source"""
+    """The `HS861m` class is a Pandas data frame loaded with the EIA Form 861
+    customer consumption data for US states starting in 2017.
+
+    The data frame includes the following columns.
+
+      - `res_revenue_kusd`: residential revenue in thousands of US dollars
+
+      - `res_energy_mwh`: residential energy sales in MWh
+
+      - `res_customers_qty`: number of residential customers
+
+      - `res_price_cpkwh`: average residential energy price in US cents per kWh
+
+      - `com_revenue_kusd`: commercial revenue in thousands of US dollars
+
+      - `com_energy_mwh`: commercial energy sales in MWh
+
+      - `com_customers_qty`: number of commercial customers
+
+      - `com_price_cpkwh`: average commercial energy price in US cents per kWh
+
+      - `ind_revenue_kusd`: industrial revenue in thousands of US dollars
+
+      - `ind_energy_mwh`: industrial energy sales in MWh
+
+      - `ind_customers_qty`: number of industrial customers
+
+      - `ind_price_cpkwh`: average industrial energy price in US cents per kWh
+
+      - `tra_revenue_kusd`: transportation revenue in thousands of US dollars
+
+      - `tra_energy_mwh`: transportation energy sales in MWh
+
+      - `tra_customers_qty`: number of transportation customers
+
+      - `tra_price_cpkwh`: average transportation energy price in US cents per kWh
+
+      - `tot_revenue_kusd`: total revenue in thousands of US dollars
+
+      - `tot_energy_mwh`: total energy sales in MWh
+
+      - `tot_customers_qty`: number of total customers
+
+      - `tot_price_cpkwh`: average total energy price in US cents per kWh
+    """
 
     def __init__(
         self,
@@ -101,6 +154,9 @@ if __name__ == "__main__":
             result.append(HS861m(year,month+1))
     result = pd.concat(result).reset_index().set_index(["state","date"])
 
+    print("\n\n".join(f"  - `{x}`: " for x in result.columns))
+
+    quit()
     try:
         import matplotlib.pyplot as plt
         values = result.loc["CA"][[f"{x}_energy_mwh" for x in ["ind","res","com"]]]/1e6
