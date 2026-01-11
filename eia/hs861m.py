@@ -136,7 +136,14 @@ class HS861m(pd.DataFrame):
             data.fillna(0.0,inplace=True)
             data.sort_index(inplace=True)
 
-        super().__init__(data.loc[f"{year}-{month}"])
+            if year is None:
+                super().__init__(data)
+            elif month is None:
+                super().__init__(data.loc[(f"{year}-{x+1:02d}-01 00:00:00+00:00" for x in range(12))])
+            else:
+                super().__init__(data.loc[f"{year}-{month:02d}-01 00:00:00+00:00"])
+        else:
+            super().__init__(data)
 
     @classmethod
     def makeargs(cls,**kwargs):
@@ -152,11 +159,8 @@ if __name__ == "__main__":
     for year in range(2018,2023):
         for month in range(12):
             result.append(HS861m(year,month+1))
-    result = pd.concat(result).reset_index().set_index(["state","date"])
+    result = pd.concat(result)
 
-    print("\n\n".join(f"  - `{x}`: " for x in result.columns))
-
-    quit()
     try:
         import matplotlib.pyplot as plt
         values = result.loc["CA"][[f"{x}_energy_mwh" for x in ["ind","res","com"]]]/1e6

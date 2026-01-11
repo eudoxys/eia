@@ -3,11 +3,12 @@ import sys
 import datetime as dt
 from eia.form860m import Form860m
 from eia.form861m import Form861m
+from eia.hs861m import HS861m
 
 def test_form860m():
     """Test Form 860m data frame"""
     errors = 0
-    year = dt.datetime.now().year - 1
+    year = dt.datetime.now().year - 2
     for month in range(1,13):
         try:
             raw = Form860m(year,month,raw=True)
@@ -24,7 +25,7 @@ def test_form860m():
 def test_form861m():
     """Test Form 861m data frame"""
     errors = 0
-    year = dt.datetime.now().year - 1
+    year = dt.datetime.now().year - 2
     for month in range(1,13):
         try:
             raw = Form861m(year,month,raw=True)
@@ -36,6 +37,23 @@ def test_form861m():
             raise
         else:
             print(f"Form861m({year=},{month=}) ok.",file=sys.stderr,flush=True)
+    return errors
+
+def test_hs861m():
+    """Test HS 861m data frame"""
+    errors = 0
+    year = dt.datetime.now().year - 2
+    for month in range(1,13):
+        try:
+            raw = HS861m(year,month,raw=True)
+            data = HS861m(year,month,raw=False)
+            assert len(data) > 0, f"no data"
+        except Exception as err:
+            print(f"ERROR [eia.tests]: HS861m({year=},{month=}) --> {err}",file=sys.stderr,flush=True)
+            errors += 1
+            raise
+        else:
+            print(f"HS861m({year=},{month=}) ok.",file=sys.stderr,flush=True)
     return errors
 
 
