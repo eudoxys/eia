@@ -17,12 +17,12 @@ See https://www.eudoxys.com/eia
 
 ### Command line
 
-    eia 861m --years 2020 --month 8 -o f861.csv
+    eia distributed_generation --years 2020 --month 8
 
 ### Python code
 
-    from eia.form861m import Form861m
-    print(Form861m(years=2020,month=8))
+    from eia import Form861m
+    Form861m(year=2020,month=8)
 
 ## Issues
 
