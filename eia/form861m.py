@@ -11,9 +11,12 @@ See https://www.eia.gov/electricity/data/eia861m/ for details.
 
 import os
 import datetime as dt
+import pytz
 import warnings
 import pandas as pd
 import requests
+
+_cache = {}
 
 class Form861m(pd.DataFrame):
     """The `Form861m` class is a Pandas data frame loaded with the EIA Form 861
@@ -21,26 +24,26 @@ class Form861m(pd.DataFrame):
 
     The data frame includes the following columns.
 
-    - `date`: the primary index indicate the date on which the new values
-      go into effect.
+      - `date`: the primary index indicate the date on which the new values go
+        into effect.
 
-    - `state`: the state for which the values are in effect.
+      - `state`: the state for which the values are in effect.
 
-    - `res_mw`: the residential power capacity in megaWatts.
+      - `res_mw`: the residential power capacity in megaWatts.
 
-    - `com_mw`: the commercial power capacity in megaWatts.
+      - `com_mw`: the commercial power capacity in megaWatts.
 
-    - `ind_mw`: the industrial power capacity in megaWatts.
+      - `ind_mw`: the industrial power capacity in megaWatts.
 
-    - `tot_mw`: the total power capacity in megaWatts.
+      - `tot_mw`: the total power capacity in megaWatts.
 
-    - `res_mwh`: the residential energy production in megaWatts hours.
+      - `res_mwh`: the residential energy production in megaWatts hours.
 
-    - `com_mwh`: the commercial energy production in megaWatts hours.
+      - `com_mwh`: the commercial energy production in megaWatts hours.
 
-    - `ind_mwh`: the industrial energy production in megaWatts hours.
+      - `ind_mwh`: the industrial energy production in megaWatts hours.
 
-    - `tot_mwh`: the total energy production in megaWatts hours.
+      - `tot_mwh`: the total energy production in megaWatts hours.
 
     If the `raw` argument is `True`, the original EIA data is returned.
     """
@@ -57,17 +60,18 @@ class Form861m(pd.DataFrame):
         ):
         """Construct EIA Form 861 data frame
 
-        # Arguments
+        Arguments
+        ---------
 
-        - `year`: specifies the year (2017 to present)
+          - `year`: specifies the year (2017 to present)
 
-        - `month`: specifies the month (1 to 12)
+          - `month`: specifies the month (1 to 12)
 
-        - `refresh`: refresh data cache (default `False`)
+          - `refresh`: refresh data cache (default `False`)
 
-        - `raw`: disable data frame cleanup, i.e., don't set `NaN` values
-          to 0.0, construct the `date` index, or remove the `status`
-          column (default `False`)
+          - `raw`: disable data frame cleanup, i.e., don't set `NaN` values
+            to 0.0, construct the `date` index, or remove the `status`
+            column (default `False`)
         """
 
         if isinstance(year,str):
@@ -80,55 +84,61 @@ class Form861m(pd.DataFrame):
         assert isinstance(month,int), f"{type(month)=} is not valid"
         assert 1 <= month <= 12, f"{month=} is not valid"
 
+        global _cache
+        cache_key = f"{year}-{month:02d}"
+        if not cache_key in _cache or refresh:
 
-        # download data from EIA
-        if self.CACHEDIR is None:
-            self.CACHEDIR = os.path.join(os.path.dirname(__file__),".cache")
-        os.makedirs(self.CACHEDIR,exist_ok=True)
-        thisyear = dt.datetime.now().year
-        cachefile = os.path.join(self.CACHEDIR,f"form861m_{year}.xlsx")
+            # download data from EIA
+            if self.CACHEDIR is None:
+                self.CACHEDIR = os.path.join(os.path.dirname(__file__),".cache")
+            os.makedirs(self.CACHEDIR,exist_ok=True)
+            thisyear = dt.datetime.now().year
+            cachefile = os.path.join(self.CACHEDIR,f"form861m_{year}.xlsx")
 
-        # read data from network if necessary
-        if refresh or not os.path.exists(cachefile):
-            filename = f"small_scale_solar_{year}.xlsx"
-            url = "https://www.eia.gov/electricity/data/eia861m/" \
-                f"{'archive/' if year < thisyear else ''}xls/{filename}"
-            req = requests.get(url,timeout=10)
-            assert req.status_code == 200, \
-                f"'{url}' not available (HTTP error {req.status_code})"
-            with open(cachefile,"wb") as fh:
-                fh.write(req.content)
+            # read data from network if necessary
+            if refresh or not os.path.exists(cachefile):
+                filename = f"small_scale_solar_{year}.xlsx"
+                url = "https://www.eia.gov/electricity/data/eia861m/" \
+                    f"{'archive/' if year < thisyear else ''}xls/{filename}"
+                req = requests.get(url,timeout=10)
+                assert req.status_code == 200, \
+                    f"'{url}' not available (HTTP error {req.status_code})"
+                with open(cachefile,"wb") as fh:
+                    fh.write(req.content)
 
-        # load data from cache
-        try:
-            data = pd.read_excel(cachefile,
-                engine="openpyxl",
-                sheet_name="Monthly Totals- States",
-                skiprows=3,
-                names=["year","month","state","status",
-                    "res_mw","com_mw","ind_mw","tot_mw",
-                    "res_mwh","com_mwh","ind_mwh","tot_mwh",
-                    ],
-                # na_values = ["NM","."],
-                dtype = {"state":str},
-                index_col=[0,1],
-                ).sort_index().loc[year,month].reset_index()
-        # pylint: disable=broad-exception-caught
-        except Exception as err:
-            warnings.warn(f"unable to read {cachefile} ({err})--"\
-                "deleting invalid cache file (try again later)")
-            data = None
-            os.unlink(cachefile)
+            # load data from cache
+            try:
+                data = pd.read_excel(cachefile,
+                    engine="openpyxl",
+                    sheet_name="Monthly Totals- States",
+                    skiprows=3,
+                    names=["year","month","state","status",
+                        "res_mw","com_mw","ind_mw","tot_mw",
+                        "res_mwh","com_mwh","ind_mwh","tot_mwh",
+                        ],
+                    # na_values = ["NM","."],
+                    dtype = {"state":str},
+                    index_col=[0,1],
+                    ).sort_index().loc[year,month].reset_index()
+            # pylint: disable=broad-exception-caught
+            except Exception as err:
+                warnings.warn(f"unable to read {cachefile} ({err})--"\
+                    "deleting invalid cache file (try again later)")
+                data = None
+                os.unlink(cachefile)
 
-        if data is None:
-            raise RuntimeError(f"{cachefile=} is not valid")
+            if data is None:
+                raise RuntimeError(f"{cachefile=} is not valid")
+            _cache[cache_key] = data.copy()
+        else:
+            data = _cache[cache_key].copy()
 
         # construct dataframe
         if not raw:
             data.dropna(subset="status",inplace=True)
             data.fillna(0.0,inplace=True)
-            data.index = pd.DatetimeIndex([dt.date(int(y),int(m),1)
-                for y,m in zip(data.year,data.month)])
+            data.index = pd.DatetimeIndex([f"{year}-{month:02d}-01 00:00:00+00:00"
+                for y,m in zip(data.year,data.month)],tz=0)
             data.index.name = "date"
             data.drop(["year","month","status"],axis=1,inplace=True)
             def tofloat(x):
@@ -144,7 +154,7 @@ class Form861m(pd.DataFrame):
         else:
             data.month = data.month.astype(int)
             data.year = data.year.astype(int)
-        super().__init__(data.sort_index())
+        super().__init__(data.sort_index().reset_index())
 
     @classmethod
     def makeargs(cls,**kwargs):
@@ -152,7 +162,24 @@ class Form861m(pd.DataFrame):
         return {x:y for x,y in kwargs.items() if x in cls.__init__.__annotations__}
 
 if __name__ == '__main__':
+
     pd.options.display.width = None
     pd.options.display.max_columns = None
     pd.options.display.max_rows = None
-    print(Form861m(2024,8))
+
+    result = []
+    for year in range(2018,2023):
+        for month in range(12):
+            result.append(Form861m(year,month+1))
+    result = pd.concat(result).set_index("state").loc["WA"].set_index("date")
+    sectors = ["res","com","ind"]
+    for sector in sectors:
+        result[f"{sector}_cf"] = result[f"{sector}_mwh"] / result["tot_mwh"]
+    try:
+        import matplotlib.pyplot as plt
+        result[[f"{x}_cf" for x in sectors]].plot(kind="area")
+        plt.show()
+        print(result[[f"{x}_cf" for x in sectors]])
+    except ModuleNotFoundError:
+        print(result[[f"{x}_cf" for x in sectors]])
+

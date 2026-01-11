@@ -34,10 +34,10 @@ class Form860m(pd.DataFrame):
 
     The data frame includes the following columns.
 
-    - `date`: the primary index indicate the date on which the new values
-      go into effect.
+      - `date`: the primary index indicate the date on which the new values go
+        into effect.
 
-    - `state`: the state for which the values are in effect.
+      - `state`: the state for which the values are in effect.
 
     If the `raw` argument is `True`, the original EIA data is returned.
     """
@@ -103,17 +103,18 @@ class Form860m(pd.DataFrame):
         ):
         """Construct EIA Forma 860m data frame
 
-        # Arguments
+        Arguments
+        ---------
 
-        - `year`: specifies the year (2015 to present)
+          - `year`: specifies the year (2015 to present)
 
-        - `month`: specifies the month (1 to 12)
+          - `month`: specifies the month (1 to 12)
 
-        - `subset`: data subset requested
+          - `subset`: data subset requested
 
-        - `refresh`: refresh data cache (default `False`)
+          - `refresh`: refresh data cache (default `False`)
 
-        - `raw`: return raw data (default `False`)
+          - `raw`: return raw data (default `False`)
         """
 
         # check arguments

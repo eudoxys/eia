@@ -2,23 +2,28 @@
 
 The `eia` package downloads and structures EIA form data for bulk power systems.
 
-# Usage
+Syntax
+------
     
     eia [-y YEAR] [-m MONTH] [--subset SUBSET] 
         [-o|--output OUTPUT] [--raw] [--refresh] 
         [-h|--help] [--warning] [--debug] 
         [-f|--format {csv,gzip,zip,xlsx}]
-        {861m,860m,help}
+        {bulk_generation,customer_demand,distributed_generation,help}
 
-# Positional arguments
+Positional arguments
+--------------------
 
-- `860m`: EIA Form 860m
+- `bulk_generation`: EIA Form 860m bulk generation data
 
-- `861m`: EIA Form 861m
+- `customer_demand`: EIA Form 861m customer consumption data
+
+- `distributed_generation`: EIA Form 861m non-bulk generation data
 
 - `help`: get online help
 
-# Options
+Optional arguments
+------------------
 
 -  `-h|--help`: show this help message and exit
 
@@ -40,7 +45,8 @@ The `eia` package downloads and structures EIA form data for bulk power systems.
 
 - `-f|--format {csv,gzip,zip,xlsx}`: specify output format
 
-# Supported forms
+Supported forms
+---------------
 
 Currently supported forms are
 
@@ -48,20 +54,24 @@ Currently supported forms are
 
 - `eia.form861m.Form861m`: Distributed generation capacity and energy data (1MW capacity cut-off)
 
-# Installation
+- `eia.hs861m.HS861m`: Customer energy consumption data (1MW capacity cut-off)
+
+Installation
+------------
 
     python3 -m venv .venv
     . .venv/bin/activate
     pip install git+https://github.com/eudoxys/eia
 
-# Examples
+Examples
+--------
 
-
-## Shell
+Shell
+-----
 
 Get the state-level distributed generation data for August 2020
 
-    eia 861m --year 2020 --month 8
+    eia distribute_generation --year 2020 --month 8
 
 Outputs
 
@@ -79,7 +89,8 @@ Outputs
                WV        6.987     3.127     0.058     10.172     1071.614     486.645       9.013     1567.273
                WY        6.272     1.393     0.276      7.941     1080.503     248.006      49.268     1377.776
 
-## Python
+Python
+------
 
 Get the state-level distributed generation data for August 2020
 
@@ -102,7 +113,8 @@ Outputs
                WV        6.987     3.127     0.058     10.172     1071.614     486.645       9.013     1567.273
                WY        6.272     1.393     0.276      7.941     1080.503     248.006      49.268     1377.776
 
-# Package information
+Package information
+-------------------
 
 - Source code: https://github.com/eudoxys/eia
 
