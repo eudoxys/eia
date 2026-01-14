@@ -8,6 +8,7 @@ import pandas as pd
 from eia import __doc__ as docs
 from eia.form861m import Form861m
 from eia.form860m import Form860m
+from eia.form930 import Form930
 from eia.hs861m import HS861m
 
 E_OK = 0
@@ -23,6 +24,7 @@ _FORMS = {
     "bulk_generation": Form861m,
     "customer_demand": HS861m,
     "distributed_generation": Form861m,
+    "region_hourly": Form930,
 }
 
 def main(*args:list[str]) -> int:

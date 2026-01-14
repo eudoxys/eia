@@ -127,4 +127,5 @@ Package information
 from eia.cli import main
 from eia.form860m import Form860m
 from eia.form861m import Form861m
+from eia.form930 import Form930
 from eia.hs861m import HS861m
