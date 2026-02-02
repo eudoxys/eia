@@ -1,4 +1,5 @@
 pandas
 openpyxl
 requests
+pytz
 cache @ git+https://github.com/eudoxys/cache
