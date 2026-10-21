@@ -56,6 +56,15 @@ Currently supported forms are
 
 - `eia.hs861m.HS861m`: Customer energy consumption data (1MW capacity cut-off)
 
+- `eia.form923.Form923`: Monthly net generation by balancing authority or by
+  plant, prime mover, and fuel
+
+- `eia.form930.Form930`: Hourly load, net generation, and interchange by
+  balancing authority or region (UTC, hour-beginning)
+
+- `eia.form930.Form930Fuel`: Hourly net generation by energy source by
+  balancing authority or region (UTC, hour-beginning; July 2018 onward)
+
 Installation
 ------------
 
@@ -127,6 +136,6 @@ Package information
 from eia.cli import main
 from eia.form860m import Form860m
 from eia.form861m import Form861m
-from eia.form930 import Form930
+from eia.form930 import Form930, Form930Fuel
 from eia.form923 import Form923
 from eia.hs861m import HS861m
