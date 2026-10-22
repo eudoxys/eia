@@ -179,3 +179,5 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+# Generated pdoc documentation (built and deployed by .github/workflows/deploy-pages.yaml)
+/docs/

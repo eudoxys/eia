@@ -65,6 +65,13 @@ Currently supported forms are
 - `eia.form930.Form930Fuel`: Hourly net generation by energy source by
   balancing authority or region (UTC, hour-beginning; July 2018 onward)
 
+Form 923 and Form 930 data are currently available from Python only; the
+command line tool does not yet support them.
+
+Form 930 data are obtained from the EIA Open Data API, which requires an API
+key. Register at https://www.eia.gov/opendata/register.php, then store the key
+in the environment variable `EIA_API_KEY` or in the file `~/.eia/api_key`.
+
 Installation
 ------------
 
@@ -116,6 +123,40 @@ Outputs
     49 2020-08-01 00:00:00+00:00    WV     6.987     3.127     0.058     10.172     1071.614     486.645       9.013     1567.273
     50 2020-08-01 00:00:00+00:00    WY     6.272     1.393     0.276      7.941     1080.503     248.006      49.268     1377.776
 
+Get the August 2020 net generation from natural gas and hydro in the CAISO
+balancing authority (Form 923)
+
+    from eia import Form923
+    Form923(2020,8,fuels=["NG","WAT"],bas="CISO")
+
+Outputs
+
+                                                   gen_mwh
+    timestamp                 state ba   fuel
+    2020-08-01 00:00:00+00:00 CA    CISO NG    9013312.798
+                                         WAT   1773947.542
+                              NV    CISO NG     153002.000
+
+Get the same data by plant and prime mover for hydro plants in California
+(Form 923)
+
+    from eia import Form923
+    Form923(2020,8,states="CA",fuels="WAT",by="plant")
+
+Get the hourly load, net generation, and interchange for California in August
+2020 (Form 930; columns `timestamp`, `load_MW`, `generation_MW`,
+`interchange_MW`)
+
+    from eia import Form930
+    Form930("CAL",2020,8)
+
+Get the hourly net generation by energy source for the Bonneville Power
+Administration in August 2020 (Form 930; one `{code}_MW` column per energy
+source, e.g., `NG_MW`, `NUC_MW`, `WAT_MW`, `WND_MW`)
+
+    from eia import Form930Fuel
+    Form930Fuel("BPAT",2020,8)
+
 Package information
 -------------------
 
@@ -132,6 +173,7 @@ Package information
     - [pandas](https://pypi.org/project/pandas/)
     - [openpyxl](https://pypi.org/project/openpyxl/)
     - [requests](https://pypi.org/project/requests/)
+    - [cache](https://github.com/eudoxys/cache)
 """
 from eia.cli import main
 from eia.form860m import Form860m
