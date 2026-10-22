@@ -81,6 +81,16 @@ command line tool does not yet support them.
 - Downloaded data are cached locally; pass `refresh=True` (or `--refresh` on
   the command line) to download again.
 
+## Claude Code skill
+
+The file `.claude/skills/eia/SKILL.md` documents form selection, returned
+data frame structure, caching, and current command-line limitations for use
+with Claude Code. Claude Code loads it automatically when run from a clone of
+this repository. To make it available in other projects, copy the folder:
+
+    mkdir -p ~/.claude/skills
+    cp -r .claude/skills/eia ~/.claude/skills/
+
 ## Issues
 
 See https://github.com/eudoxys/eia/issues
