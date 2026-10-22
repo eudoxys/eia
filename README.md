@@ -28,6 +28,16 @@ See https://www.eudoxys.com/eia
     from eia import Form861m
     Form861m(year=2020,month=8)
 
+## Claude Code skill
+
+The file `.claude/skills/eia/SKILL.md` documents form selection, returned
+data frame structure, caching, and current command-line limitations for use
+with Claude Code. Claude Code loads it automatically when run from a clone of
+this repository. To make it available in other projects, copy the folder:
+
+    mkdir -p ~/.claude/skills
+    cp -r .claude/skills/eia ~/.claude/skills/
+
 ## Issues
 
 See https://github.com/eudoxys/eia/issues
