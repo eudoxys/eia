@@ -37,7 +37,7 @@ from eia import Form860m, Form861m, HS861m, Form923, Form930, Form930Fuel
 ```
 
 Use the Python API rather than the `eia` command line for anything other
-than Form 861m and HS 861m (see *Command-line limitations* below).
+than Form 861m (see *Command-line limitations* below).
 
 ## Class reference
 
@@ -90,6 +90,9 @@ dg.set_index("state").loc["WA", ["tot_mw", "tot_mwh"]]
   `ind`, `tra`, `tot` and quantities `revenue_kusd` (thousand USD),
   `energy_mwh`, `customers_qty`, `price_cpkwh` (US cents per kWh).
 - Missing values are set to `0.0` unless `raw=True`.
+- `raw=True` returns the whole table unfiltered; `year` and `month` are
+  ignored.
+- Pass `year` and `month` as `int`; a `str` month raises `ValueError`.
 
 ```python
 sales = HS861m(2022, 7)
@@ -169,13 +172,16 @@ The `eia` command accepts `bulk_generation`, `customer_demand`,
   small-scale solar data.
 - `region_hourly` fails with `'Form930' has no attribute 'makeargs'`.
 - Form 923 and `Form930Fuel` have no command-line entry.
+- `customer_demand` fails when `-m` is given: the CLI passes the month as a
+  string and `HS861m` does not convert it
+  (`ValueError: Unknown format code 'd' for object of type 'str'`).
+  Use `HS861m(2022, 7)` from Python instead.
 - `.xlsx` output always uses the sheet name `Form861`.
 
-`distributed_generation` and `customer_demand` operate correctly:
+`distributed_generation` operates correctly:
 
 ```bash
 eia distributed_generation -y 2020 -m 8 -o dg_2020_08.csv
-eia customer_demand -y 2022 -m 7 -o sales_2022_07.xlsx
 ```
 
 ## Troubleshooting
