@@ -94,3 +94,7 @@ this repository. To make it available in other projects, copy the folder:
 ## Issues
 
 See https://github.com/eudoxys/eia/issues
+
+## Acknowledgments
+
+- This material is based on work supported by the U.S. Department of Energy’s Office of Electricity through a grant from the Grid Controls and Communications Division
