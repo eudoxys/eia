@@ -41,3 +41,10 @@ Issues = "https://github.com/eudoxys/eia/issues"
 
 [project.scripts]
 eia = "eia.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not network'"
+markers = [
+    "network: downloads data from EIA (deselected by default; run with `pytest -m network`)",
+    ]

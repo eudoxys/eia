@@ -76,6 +76,12 @@ taking it.
 
        pytest
 
+   The default run is offline. Tests that download data from EIA are
+   marked `network` and run with `pytest -m network` (Form 930 tests also
+   need an API key in `EIA_API_KEY` or `~/.eia/api_key`). New parsing code
+   should get an offline test using a small sample file from
+   `tests/samples.py`.
+
 5. If you change a public class, function, argument, or output, update its
    docstring and example output, the package docstring, and the README.
    Check the documentation builds with `make docs` (needs `pip install pdoc`).
