@@ -4,8 +4,6 @@ import sys
 import argparse
 import warnings
 import pandas as pd
-# pylint: disable=unused-import
-from eia import __doc__ as docs
 from eia.form861m import Form861m
 from eia.form860m import Form860m
 from eia.form923 import Form923
@@ -171,7 +169,8 @@ def main(*args:str) -> int:
 
         # handle help request
         if options.form == "help":
-            print(docs)
+            # the package docstring (eia.cli is always imported via the eia package)
+            print(sys.modules[__package__].__doc__)
             return E_OK
 
         # check output format before accessing data

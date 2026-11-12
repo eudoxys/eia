@@ -75,6 +75,8 @@ in August 2020 (Form 930)
     from eia import Form930Fuel
     Form930Fuel(2020,8,respondent="BPAT")
 
+More complete scripts are in [`examples/`](examples/).
+
 ## Conventions
 
 Every form follows the same API, so code written for one form carries over

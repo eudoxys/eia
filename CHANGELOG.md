@@ -42,6 +42,9 @@ First public release. Changes since the initial import:
 - Invalid arguments raise exceptions instead of failing `assert` checks (#37).
 - `pyproject.toml` metadata uses PEP 621 author fields and a PEP 639 license
   expression (#22).
+- Usage demos moved from the modules' `__main__` blocks to `examples/`;
+  Form 861m and Form 923 share one download helper, and `eia.cli` no longer
+  imports the `eia` package (#23).
 
 ### Deprecated
 
@@ -67,5 +70,6 @@ First public release. Changes since the initial import:
 ### Removed
 
 - Unused `pytz` dependency (#33).
+- `Form923.FORM923_URL` (use `Form923.FORM923_URLS`) (#23).
 
 [Unreleased]: https://github.com/eudoxys/eia/commits/main

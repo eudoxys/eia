@@ -16,7 +16,7 @@ import os
 import warnings
 import pandas as pd
 from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, \
-    check_published, download, month_start
+    check_published, download_first, month_start
 
 _cache = {}
 """@private In-process cache of workbooks by year"""
@@ -153,15 +153,11 @@ class Form861m(FormBase):
 
         # read data from network if necessary
         if refresh or not os.path.exists(cachefile):
-            content = None
             urls = [x.format(year=year) for x in cls.FORM861M_URLS]
-            for url in urls:
-                req = download(url,missing_ok=True)
-                if req is not None:
-                    content = req.content
-                    break
-            if content is None:
-                raise RuntimeError(f"{year=} not found at any of {urls}")
+            try:
+                content = download_first(urls)
+            except RuntimeError as err:
+                raise RuntimeError(f"{year=} {err}") from err
             with open(cachefile,"wb") as fh:
                 fh.write(content)
 
@@ -185,27 +181,3 @@ class Form861m(FormBase):
             if os.path.exists(cachefile):
                 os.unlink(cachefile)
             raise RuntimeError(f"{cachefile=} is not valid") from err
-
-
-if __name__ == '__main__':
-
-    pd.options.display.width = None
-    pd.options.display.max_columns = None
-    pd.options.display.max_rows = None
-
-    result = []
-    for year in range(2018,2023):
-        for month in range(12):
-            result.append(Form861m(year,month+1))
-    result = pd.concat(result).xs("WA",level="state")
-    sectors = ["res","com","ind"]
-    for sector in sectors:
-        result[f"{sector}_cf"] = result[f"{sector}_mwh"] / result["tot_mwh"]
-    try:
-        import matplotlib.pyplot as plt
-        result[[f"{x}_cf" for x in sectors]].plot(kind="area")
-        plt.show()
-        print(result[[f"{x}_cf" for x in sectors]])
-    except ModuleNotFoundError:
-        print(result[[f"{x}_cf" for x in sectors]])
-

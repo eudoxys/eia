@@ -235,27 +235,3 @@ class HS861m(Form861mSales):
             if year is not None and month is not None:
                 data = data.droplevel("date")
         FormBase.__init__(self,data)
-
-
-if __name__ == "__main__":
-
-    pd.options.display.max_columns = None
-    pd.options.display.width = None
-
-    result = []
-    for year in range(2018,2023):
-        for month in range(12):
-            result.append(Form861mSales(year,month+1))
-    result = pd.concat(result)
-
-    try:
-        import matplotlib.pyplot as plt
-        values = result.xs("CA",level="state")[[f"{x}_energy_mwh" for x in ["ind","res","com"]]]/1e6
-        values.plot(kind="area",figsize=(20,10))
-        plt.grid()
-        plt.xlabel("Month")
-        plt.ylabel("Energy (TWh)")
-        plt.title("California Electricity Consumption")
-        plt.show()
-    except:
-        print(result)

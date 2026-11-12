@@ -50,7 +50,7 @@ import calendar
 import pandas as pd
 
 from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, check_choice, \
-    check_published, check_list, download
+    check_published, check_list, download_first
 
 class Form923(FormBase):
     """Form923 DataFrame
@@ -73,9 +73,6 @@ class Form923(FormBase):
         "https://www.eia.gov/electricity/data/eia923/xls/f923_{year}.zip",
         ]
     """URLs to try for Form 923 zip files (archived years, then recent years)"""
-
-    FORM923_URL = FORM923_URLS[0]
-    """@private retained for backward compatibility"""
 
     FILENAME = "EIA923_Schedules_2_3_4_5_M_12_{year}"
     """Prefix of the generation and fuel workbook in the zip file"""
@@ -203,7 +200,8 @@ class Form923(FormBase):
         df = df.assign(timestamp=pd.DatetimeIndex([f"{x}-01 00:00:00+0000" for x in df["month"]]))
 
         # construct final data frame
-        super().__init__(df.set_index(["timestamp"]+[x.lower() for x in index])[["gen_mwh"]].sort_index())
+        df = df.set_index(["timestamp"]+[x.lower() for x in index])
+        super().__init__(df[["gen_mwh"]].sort_index())
 
     @classmethod
     def _workbook(cls,year:int,refresh:bool=False) -> pd.DataFrame:
@@ -221,14 +219,10 @@ class Form923(FormBase):
                 cache.delete()
 
         # download from EIA
-        content = None
-        for url in [x.format(year=year) for x in cls.FORM923_URLS]:
-            req = download(url,missing_ok=True)
-            if req is not None:
-                content = req.content
-                break
-        if content is None:
-            raise RuntimeError(f"{year=} not found at any of {cls.FORM923_URLS}")
+        try:
+            content = download_first([x.format(year=year) for x in cls.FORM923_URLS])
+        except RuntimeError as err:
+            raise RuntimeError(f"{year=} {err}") from err
 
         # extract data
         with ZipFile(BytesIO(content),"r") as fh:
@@ -277,11 +271,3 @@ class Form923(FormBase):
         # save data to cache
         df.to_csv(cache.pathname,index=False,header=True,compression="gzip")
         return df
-
-if __name__ == '__main__':
-
-    pd.options.display.width = None
-    pd.options.display.max_columns = None
-
-    print(Form923(2020,8,fuels=["NG","WAT"],bas="CISO"))
-    print(Form923(2020,8,states="CA",fuels="WAT",by="plant"))

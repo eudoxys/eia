@@ -744,6 +744,20 @@ def test_download():
             assert eia.base.download("u",timeout=7).content == b"data", "wrong content"
         assert calls == [("u",None,7)], f"unexpected calls {calls}"
 
+        # first URL that exists is used, missing URLs are skipped
+        fake,calls = responses(404,200,200)
+        with mock.patch("eia.base.requests.get",side_effect=fake):
+            assert eia.base.download_first(["a","b","c"]) == b"data", "wrong content"
+        assert [x[0] for x in calls] == ["a","b"], f"unexpected calls {calls}"
+        fake,calls = responses(404,404)
+        with mock.patch("eia.base.requests.get",side_effect=fake):
+            try:
+                eia.base.download_first(["a","b"])
+            except RuntimeError as err:
+                assert "['a', 'b']" in str(err), f"URLs missing from error: {err}"
+            else:
+                raise AssertionError("download_first() did not raise RuntimeError")
+
         # transient failures are retried
         fake,calls = responses(requests.ConnectionError("x"),503,requests.Timeout("y"),200)
         with mock.patch("eia.base.requests.get",side_effect=fake):

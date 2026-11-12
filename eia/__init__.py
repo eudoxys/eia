@@ -1,10 +1,11 @@
+# pylint: disable=line-too-long # docstring example output is wider than 100 columns
 """EIA Form Data Accessor
 
 The `eia` package downloads and structures EIA form data for bulk power systems.
 
 Syntax
 ------
-    
+
     eia [-y YEAR] [-m MONTH] [-r|--respondent RESPONDENT] [--subset SUBSET]
         [--state STATES] [--ba BAS] [--fuel FUELS] [--plant PLANTS]
         [--by {ba,plant}] [--no-increments]
@@ -279,7 +280,7 @@ Package information
 
 - License: https://github.com/eudoxys/eia/blob/main/LICENSE
 
-- Dependencies: 
+- Dependencies:
 
     - [pandas](https://pypi.org/project/pandas/)
     - [openpyxl](https://pypi.org/project/openpyxl/)

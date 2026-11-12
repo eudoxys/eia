@@ -192,7 +192,8 @@ def set_download_options(
       - `ValueError`: an option is negative (or `timeout` is zero)
     """
     old = download_options()
-    for name,value,kind in [("timeout",timeout,float),("retries",retries,int),("backoff",backoff,float)]:
+    for name,value,kind in [("timeout",timeout,float),("retries",retries,int),
+            ("backoff",backoff,float)]:
         if value is None:
             continue
         if isinstance(value,bool) or not isinstance(value,numbers.Real) or value < 0 \
@@ -266,6 +267,32 @@ def download(url:str,params=None,*,missing_ok:bool=False,
         time.sleep(delay)
         delay *= 2
     raise AssertionError("unreachable") # pragma: no cover
+
+def download_first(urls:list[str]) -> bytes:
+    """Download the first of several URLs that exists
+
+    Arguments
+    ---------
+
+      - `urls`: URLs to try in order; a URL the server reports does not
+        exist (HTTP 404) is skipped
+
+    Returns
+    -------
+
+      - `bytes`: the content of the first URL found
+
+    Raises
+    ------
+
+      - `RuntimeError`: none of the URLs exists, or a URL cannot be
+        downloaded (see `download()`)
+    """
+    for url in urls:
+        req = download(url,missing_ok=True)
+        if req is not None:
+            return req.content
+    raise RuntimeError(f"not found at any of {urls}")
 
 def latest_month(lag:int=1) -> tuple[int,int]:
     """@private Get the latest month that can have been published

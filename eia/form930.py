@@ -81,7 +81,8 @@ def _api_key() -> str:
     except FileNotFoundError:
         key = ""
     except OSError as err:
-        raise RuntimeError(f"unable to read EIA API key file '{path}' ({type(err).__name__})") from None
+        raise RuntimeError(f"unable to read EIA API key file '{path}' "
+            f"({type(err).__name__})") from None
     if not key:
         raise RuntimeError(f"no EIA API key found: set the environment variable {API_KEY_ENV} "
             f"or save the key in '{path}' (register for a key at {REGISTER_URL})")
@@ -103,7 +104,8 @@ def _months(year:int,month:int|None) -> list[int]:
 def _hours(year:int,month:int) -> pd.DatetimeIndex:
     """@private Get hour-beginning UTC timestamps for a month"""
     start = pd.Timestamp(year=year,month=month,day=1,tz="UTC")
-    return pd.date_range(start,start+pd.DateOffset(months=1),freq="h",inclusive="left",name="timestamp")
+    return pd.date_range(start,start+pd.DateOffset(months=1),freq="h",inclusive="left",
+        name="timestamp")
 
 class _Form930Base(FormBase):
     """@private Common Form 930 API access"""
@@ -183,7 +185,8 @@ class _Form930Base(FormBase):
     @staticmethod
     def _timestamp(period:pd.Series) -> pd.DatetimeIndex:
         """@private Convert API UTC hour-ending periods to hour-beginning timestamps"""
-        return pd.DatetimeIndex(pd.to_datetime(period,format="%Y-%m-%dT%H",utc=True)) - pd.Timedelta(hours=1)
+        return pd.DatetimeIndex(pd.to_datetime(period,format="%Y-%m-%dT%H",utc=True)) \
+            - pd.Timedelta(hours=1)
 
     @classmethod
     def _check_respondent(cls,name:str,value:str,refresh:bool=False):
@@ -378,9 +381,11 @@ class Form930(_Form930Base):
             if raw:
                 result.append(data)
                 continue
-            data = data.assign(timestamp=self._timestamp(data["period"]),value=data["value"].astype(float))
+            data = data.assign(timestamp=self._timestamp(data["period"]),
+                value=data["value"].astype(float))
             data = data.pivot_table(index="timestamp",columns="type",values="value",aggfunc="sum")
-            data = data.reindex(index=_hours(year,mon),columns=list(self.TYPES)).rename(self.TYPES,axis=1)
+            data = data.reindex(index=_hours(year,mon),columns=list(self.TYPES)) \
+                .rename(self.TYPES,axis=1)
             data.columns.name = None
             result.append(data)
 
@@ -480,8 +485,10 @@ class Form930Fuel(_Form930Base):
                 continue
             if fuels is not None:
                 data = data.loc[data["fueltype"].str.upper().isin(fuels)]
-            data = data.assign(timestamp=self._timestamp(data["period"]),value=data["value"].astype(float))
-            data = data.pivot_table(index="timestamp",columns="fueltype",values="value",aggfunc="sum")
+            data = data.assign(timestamp=self._timestamp(data["period"]),
+                value=data["value"].astype(float))
+            data = data.pivot_table(index="timestamp",columns="fueltype",values="value",
+                aggfunc="sum")
             data = data.reindex(index=_hours(year,mon))
             data.columns = [f"{x.lower()}_mw" for x in data.columns]
             result.append(data)
@@ -493,11 +500,3 @@ class Form930Fuel(_Form930Base):
             return
         data = pd.concat(result)
         super().__init__(data[sorted(data.columns)])
-
-if __name__ == "__main__":
-
-    pd.options.display.width = None
-    pd.options.display.max_columns = None
-
-    print(Form930(2020,8,respondent="CAL"))
-    print(Form930Fuel(2020,8,respondent="BPAT"))
