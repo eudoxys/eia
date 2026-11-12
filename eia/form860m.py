@@ -17,7 +17,7 @@ import warnings
 import zipfile
 import pandas as pd
 import requests
-from eia.base import FormBase, month_number, cache_entry
+from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, check_choice
 
 def _int(s,default=0):
     try:
@@ -120,29 +120,23 @@ class Form860m(FormBase):
           - `refresh`: refresh data cache (default `False`)
 
           - `raw`: return raw data (default `False`)
+
+        Raises
+        ------
+
+          - `TypeError`: an argument has the wrong type
+
+          - `ValueError`: `year`, `month` or `subset` is not valid
+
+          - `RuntimeError`: the workbook cannot be downloaded or read
         """
 
         # check arguments
-        if isinstance(year,str):
-            year = int(year)
-        assert isinstance(year,int), "year must be an integer"
-        assert 2015 <= year <= dt.datetime.now().year, f"{year=} is not valid"
-
-        if isinstance(month,str):
-            month = month_number(month)
-        assert isinstance(month,int), "month must be an integer"
-        assert 1 <= month <= 12, f"{month=} is not valid"
-
-        if subset is None:
-            subset = "Operating"
-        assert subset in self.SUBSETS, f"{subset=} is not valid"
-
-        if refresh is None:
-            refresh=False
-        assert isinstance(refresh,bool), "refresh must be Boolean"
-        if raw is None:
-            raw = False
-        assert isinstance(raw,bool), "raw must be Boolean"
+        year = check_year(year,2015)
+        month = check_month(month)
+        subset = check_choice("subset","Operating" if subset is None else subset,self.SUBSETS)
+        refresh = check_bool("refresh",refresh)
+        raw = check_bool("raw",raw)
 
         # load data
         cachefile = cache_entry("form860m",f"{year}-{month:02d}.xlsx",
@@ -158,8 +152,8 @@ class Form860m(FormBase):
 
                 # download data from EIA
                 req = requests.get(url,timeout=10)
-                assert req.status_code == 200, \
-                    f"'{url}' not available (HTTP error {req.status_code})"
+                if req.status_code != 200:
+                    raise RuntimeError(f"'{url}' not available (HTTP error {req.status_code})")
                 with open(cachefile,"wb") as fh:
                     fh.write(req.content)
                 source = f"downloaded from {url}"

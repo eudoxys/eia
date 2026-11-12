@@ -533,6 +533,85 @@ def test_hs861m_args():
         hs861m._cache = saved
     return errors
 
+_VALIDATION_SCRIPT = '''
+import sys
+from eia.base import check_year, check_month, check_bool, check_choice
+from eia.form860m import Form860m
+from eia.form861m import Form861m
+from eia.form923 import Form923
+from eia.form930 import Form930, Form930Fuel, _Form930Base
+from eia.hs861m import HS861m
+_Form930Base.respondents = staticmethod(lambda: ["CAL"])
+cases = [
+    (TypeError, check_year, (2020.0, 2015), {}),
+    (TypeError, check_year, (True, 2015), {}),
+    (TypeError, check_year, (None, 2015), {}),
+    (ValueError, check_year, ("last", 2015), {}),
+    (ValueError, check_year, (2014, 2015), {}),
+    (ValueError, check_year, (9999, 2015), {}),
+    (TypeError, check_month, (8.0,), {}),
+    (TypeError, check_month, (None,), {}),
+    (ValueError, check_month, (0,), {}),
+    (ValueError, check_month, ("Foo",), {}),
+    (TypeError, check_bool, ("refresh", 1), {}),
+    (ValueError, check_choice, ("by", "state", {"ba": 1}), {}),
+    (TypeError, check_choice, ("by", ["ba"], {"ba": 1}), {}),
+    (ValueError, Form860m, (2014, 8), {}),
+    (ValueError, Form860m, (2020, 13), {}),
+    (TypeError, Form860m, (2020.5, 8), {}),
+    (ValueError, Form860m, (2020, 8), {"subset": "Bogus"}),
+    (TypeError, Form860m, (2020, 8), {"refresh": "yes"}),
+    (ValueError, Form861m, (2016, 8), {}),
+    (ValueError, Form861m, ("2020", "Foo"), {}),
+    (TypeError, Form861m, (2020, 8), {"raw": 1}),
+    (ValueError, Form923, (2007,), {}),
+    (ValueError, Form923, (2020, 13), {}),
+    (ValueError, Form923, (2020,), {"by": "state"}),
+    (TypeError, Form923, ([2020],), {}),
+    (TypeError, Form930, (None, 2020, 8), {}),
+    (ValueError, Form930, ("XXX", 2020, 8), {}),
+    (ValueError, Form930, ("CAL", 2014, 8), {}),
+    (ValueError, Form930, ("CAL", 2020, 13), {}),
+    (TypeError, Form930, ("CAL", 2020, 8), {"refresh": "yes"}),
+    (TypeError, Form930Fuel, (None, 2020, 8), {}),
+    (ValueError, Form930Fuel, ("XXX", 2020, 8), {}),
+    (ValueError, Form930Fuel, ("CAL", 2017, 8), {}),
+    (TypeError, HS861m, (2020.0, 8), {}),
+    (ValueError, HS861m, (1989, 8), {}),
+    (ValueError, HS861m, (2020, "Foo"), {}),
+]
+for expected, func, args, kwargs in cases:
+    try:
+        func(*args, **kwargs)
+    except expected:
+        continue
+    except Exception as err:
+        sys.exit(f"{func.__name__}{args} {kwargs} raised {type(err).__name__}: {err}")
+    sys.exit(f"{func.__name__}{args} {kwargs} did not raise {expected.__name__}")
+assert check_year("2020", 2015) == 2020 and check_year(None, 2015, optional=True) is None
+assert check_month("Aug") == 8 and check_month(None, optional=True) is None
+assert check_bool("raw", None) is False and check_bool("raw", None, True) is True
+print("ok")
+'''
+
+def test_argument_validation():
+    """Test argument validation raises TypeError/ValueError, also under `python -O`"""
+    import subprocess
+    errors = 0
+    try:
+        for flags in [[],["-O"]]:
+            result = subprocess.run([sys.executable,*flags,"-c",_VALIDATION_SCRIPT],
+                capture_output=True,text=True,check=False)
+            assert result.returncode == 0 and result.stdout.strip() == "ok", \
+                f"python {' '.join(flags)} validation failed: {result.stderr.strip()}"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: argument validation --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("argument validation ok.",file=sys.stderr,flush=True)
+    return errors
+
 def test_hs861m_cachedir():
     """Test HS 861m uses the eia cache folder without accessing EIA data"""
     import tempfile

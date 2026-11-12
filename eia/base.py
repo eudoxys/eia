@@ -25,6 +25,8 @@ The cache is never written inside the installed package. Use
 import os
 import shutil
 import inspect
+import numbers
+import datetime as dt
 import types
 import typing
 import pandas as pd
@@ -123,6 +125,13 @@ def month_number(month:int|str) -> int:
     -------
 
       - `int`: month number (1 to 12)
+
+    Raises
+    ------
+
+      - `TypeError`: `month` is not an `int` or `str`
+
+      - `ValueError`: `month` is not a valid month number or name
     """
     if isinstance(month,str):
         text = month.strip().lower().rstrip(".")
@@ -133,9 +142,141 @@ def month_number(month:int|str) -> int:
             if len(found) != 1:
                 raise ValueError(f"{month=} is not a valid month")
             return found[0]
-    if not isinstance(month,int) or isinstance(month,bool) or not 1 <= month <= 12:
+    if not isinstance(month,numbers.Integral) or isinstance(month,bool):
+        raise TypeError(f"month must be an int or str, not {type(month).__name__}")
+    if not 1 <= month <= 12:
         raise ValueError(f"{month=} is not a valid month")
-    return month
+    return int(month)
+
+def check_year(year:int|str|None,first:int,*,optional:bool=False) -> int|None:
+    """@private Coerce and validate a year argument
+
+    Arguments
+    ---------
+
+      - `year`: year as `int` or `str` (e.g., `2020` or `"2020"`)
+
+      - `first`: first year for which the form publishes data
+
+      - `optional`: accept `None` (returned unchanged)
+
+    Returns
+    -------
+
+      - `int|None`: year
+
+    Raises
+    ------
+
+      - `TypeError`: `year` is not an `int` or `str` (or `None` when
+        `optional` is not set)
+
+      - `ValueError`: `year` is not an integer, or is before `first` or
+        after the current year
+    """
+    if year is None and optional:
+        return None
+    if isinstance(year,str):
+        try:
+            year = int(year.strip())
+        except ValueError as err:
+            raise ValueError(f"{year=} is not a valid year") from err
+    if not isinstance(year,numbers.Integral) or isinstance(year,bool):
+        raise TypeError(f"year must be an int or str, not {type(year).__name__}")
+    year = int(year)
+    last = dt.datetime.now().year
+    if not first <= year <= last:
+        raise ValueError(f"{year=} is not valid (must be {first} to {last})")
+    return year
+
+def check_month(month:int|str|None,*,optional:bool=False) -> int|None:
+    """@private Coerce and validate a month argument
+
+    Arguments
+    ---------
+
+      - `month`: month number, name or abbreviation (see
+        `eia.base.month_number()`)
+
+      - `optional`: accept `None` (returned unchanged)
+
+    Returns
+    -------
+
+      - `int|None`: month number (1 to 12)
+
+    Raises
+    ------
+
+      - `TypeError`: `month` is not an `int` or `str` (or `None` when
+        `optional` is not set)
+
+      - `ValueError`: `month` is not a valid month number or name
+    """
+    if month is None and optional:
+        return None
+    return month_number(month)
+
+def check_bool(name:str,value:bool|None,default:bool=False) -> bool:
+    """@private Validate a Boolean argument
+
+    Arguments
+    ---------
+
+      - `name`: argument name (used in error messages)
+
+      - `value`: argument value; `None` selects `default`
+
+      - `default`: value used when `value` is `None`
+
+    Returns
+    -------
+
+      - `bool`: argument value
+
+    Raises
+    ------
+
+      - `TypeError`: `value` is not a `bool` or `None`
+    """
+    if value is None:
+        return default
+    if not isinstance(value,bool):
+        raise TypeError(f"{name} must be a bool, not {type(value).__name__}")
+    return value
+
+def check_choice(name:str,value,choices) -> typing.Any:
+    """@private Validate an argument that must be one of a set of choices
+
+    Arguments
+    ---------
+
+      - `name`: argument name (used in error messages)
+
+      - `value`: argument value
+
+      - `choices`: valid values
+
+    Returns
+    -------
+
+      - argument value
+
+    Raises
+    ------
+
+      - `TypeError`: `value` is not hashable (when `choices` is a `dict` or
+        `set`)
+
+      - `ValueError`: `value` is not one of `choices`
+    """
+    try:
+        valid = value in choices
+    except TypeError as err:
+        raise TypeError(f"{name}={value!r} has an invalid type") from err
+    if not valid:
+        raise ValueError(f"{name}={value!r} is not valid (must be one of {list(choices)})")
+    return value
 
 class FormBase(pd.DataFrame):
     """Base class for EIA form data frames"""
