@@ -6,7 +6,7 @@ from eia.form860m import Form860m
 from eia.form923 import Form923
 from eia.form930 import Form930, Form930Fuel
 from eia.form861m import Form861m
-from eia.hs861m import HS861m
+from eia.form861msales import Form861mSales
 from eia import cli
 from eia.base import month_number
 import eia.base
@@ -30,7 +30,7 @@ def test_cli_forms():
     errors = 0
     expected = {
         "bulk_generation": Form860m,
-        "customer_demand": HS861m,
+        "customer_demand": Form861mSales,
         "distributed_generation": Form861m,
         "generation_monthly": Form923,
         "region_hourly": Form930,
@@ -182,15 +182,16 @@ def test_cli_output():
 def test_makeargs():
     """Test every form accepts command line options through makeargs"""
     errors = 0
-    options = {"form":"region_hourly","year":"2020","month":"8","region":"CAL",
+    options = {"form":"region_hourly","year":"2020","month":"8","respondent":"CAL",
         "subset":None,"refresh":False,"raw":False,"output":None}
     try:
-        for form in [Form860m,Form861m,HS861m,Form923,Form930,Form930Fuel]:
+        for form in [Form860m,Form861m,Form861mSales,Form923,Form930,Form930Fuel]:
             assert hasattr(form,"makeargs"), f"{form.__name__} has no makeargs"
         args = Form930.makeargs(**options)
-        assert args == {"region":"CAL","year":2020,"month":8,"refresh":False}, f"Form930 got {args=}"
-        args = HS861m.makeargs(**options)
-        assert args == {"year":2020,"month":8,"refresh":False,"raw":False}, f"HS861m got {args=}"
+        assert args == {"respondent":"CAL","year":2020,"month":8,"refresh":False,"raw":False}, \
+            f"Form930 got {args=}"
+        args = Form861mSales.makeargs(**options)
+        assert args == {"year":2020,"month":8,"refresh":False,"raw":False}, f"Form861mSales got {args=}"
         args = Form860m.makeargs(**options)
         assert args["year"] == 2020 and args["month"] == 8, f"Form860m got {args=}"
         assert Form930.makeargs(month=None)["month"] is None, "month=None was not kept"
@@ -230,15 +231,15 @@ def test_makeargs():
     return errors
 
 def test_cli_region_hourly():
-    """Test region_hourly passes region, year, and month to Form930 without accessing EIA data"""
+    """Test region_hourly passes respondent, year, and month to Form930 without accessing EIA data"""
     errors = 0
     saved = cli._FORMS["region_hourly"]
     called = {}
     class Stub(Form930):
         """Record constructor arguments"""
         # pylint: disable=super-init-not-called
-        def __init__(self,region,year,month=None,*,refresh=False):
-            called.update(region=region,year=year,month=month,refresh=refresh)
+        def __init__(self,year,month=None,*,respondent,raw=False,refresh=False):
+            called.update(respondent=respondent,year=year,month=month,refresh=refresh)
         def __str__(self):
             return ""
     Stub.__init__.__annotations__.update(Form930.__init__.__annotations__)
@@ -254,7 +255,7 @@ def test_cli_region_hourly():
             finally:
                 sys.stdout = stdout
         assert codes == [cli.E_OK]*2, f"eia region_hourly returned {codes=}"
-        assert called == {"region":"CAL","year":2020,"month":8,"refresh":False}, \
+        assert called == {"respondent":"CAL","year":2020,"month":8,"refresh":False}, \
             f"eia region_hourly passed {called=}"
     except Exception as err:
         print(f"ERROR [eia.tests]: cli region_hourly --> {err}",file=sys.stderr,flush=True)
@@ -287,8 +288,8 @@ def test_cli_generation_monthly():
     class Stub(Form923):
         """Record constructor arguments"""
         # pylint: disable=super-init-not-called,unused-argument
-        def __init__(self,year,month=None,states=None,bas=None,fuels=None,*,
-                by="ba",plants=None,increments=True,precision=3,refresh=False,nonzero=True):
+        def __init__(self,year,month=None,*,states=None,bas=None,fuels=None,plants=None,
+                by="ba",increments=True,nonzero=True,precision=3,raw=False,refresh=False):
             called.append(dict(year=year,month=month,states=states,bas=bas,fuels=fuels,
                 by=by,plants=plants,increments=increments,refresh=refresh))
         def __str__(self):
@@ -322,7 +323,7 @@ def test_cli_region_fuel_hourly():
     class Stub(Form930Fuel):
         """Record constructor arguments"""
         # pylint: disable=super-init-not-called
-        def __init__(self,respondent,year,month=None,*,fuels=None,refresh=False):
+        def __init__(self,year,month=None,*,respondent,fuels=None,raw=False,refresh=False):
             called.append(dict(respondent=respondent,year=year,month=month,fuels=fuels,refresh=refresh))
         def __str__(self):
             return ""
@@ -445,8 +446,9 @@ def test_form861m_cache():
             _form861m_workbook(cachefile,2024,[1,2])
             data = Form861m(2024,2)
             assert len(data) == 2, f"expected 2 rows, got {len(data)}"
-            assert list(data.columns[:2]) == ["date","state"], \
-                f"unexpected columns {list(data.columns)}"
+            assert list(data.index.names) == ["timestamp","state"], \
+                f"unexpected index {list(data.index.names)}"
+            assert len(Form861m(2024)) == 4, "month=None did not return the whole year"
             raw = Form861m(2024,2,raw=True)
             assert "index" not in raw.columns, f"stray index column in {list(raw.columns)}"
             assert list(raw.columns[:4]) == ["year","month","state","status"], \
@@ -500,57 +502,61 @@ def test_form861m_cache():
         eia.form861m._cache.clear()
     return errors
 
-def test_hs861m():
-    """Test HS 861m data frame"""
+def test_form861msales():
+    """Test Form 861m sales data frame"""
     errors = 0
     year = dt.datetime.now().year - 2
     for month in range(1,13):
         try:
-            raw = HS861m(year,month,raw=True)
-            data = HS861m(year,month,raw=False)
+            raw = Form861mSales(year,month,raw=True)
+            data = Form861mSales(year,month,raw=False)
             assert len(data) > 0, f"no data"
         except Exception as err:
-            print(f"ERROR [eia.tests]: HS861m({year=},{month=}) --> {err}",file=sys.stderr,flush=True)
+            print(f"ERROR [eia.tests]: Form861mSales({year=},{month=}) --> {err}",file=sys.stderr,flush=True)
             errors += 1
             raise
         else:
-            print(f"HS861m({year=},{month=}) ok.",file=sys.stderr,flush=True)
+            print(f"Form861mSales({year=},{month=}) ok.",file=sys.stderr,flush=True)
     return errors
 
-def test_hs861m_args():
+def test_form861msales_args():
     """Test HS 861m year/month coercion and selection without accessing EIA data"""
     import pandas as pd
-    import eia.hs861m as hs861m
+    import eia.form861msales as form861msales
     errors = 0
-    saved = hs861m._cache
+    saved = form861msales._cache
     rows = [{"year":y,"month":m,"state":s,"status":"Final","tot_energy_mwh":1.0}
         for y in (2021,2022) for m in range(1,13) for s in ("CA","WA")]
-    hs861m._cache = pd.DataFrame(rows)
+    form861msales._cache = pd.DataFrame(rows)
     try:
-        data = HS861m("2022","8")
-        assert list(data.index.names) == ["state"] and len(data) == 2, f"year+month got {data.index.names=}, {len(data)=}"
-        assert HS861m(2022,"Aug").equals(data), "month name not accepted"
-        data = HS861m(2022)
+        data = Form861mSales("2022","8")
+        assert list(data.index.names) == ["timestamp","state"] and len(data) == 2, \
+            f"year+month got {data.index.names=}, {len(data)=}"
+        raw = Form861mSales(2022,8,raw=True)
+        assert len(raw) == 2 and set(raw["month"]) == {8}, f"raw selection not applied ({len(raw)=})"
+        assert list(raw.columns[:4]) == ["year","month","state","status"], f"raw got {list(raw.columns)}"
+        assert Form861mSales(2022,"Aug").equals(data), "month name not accepted"
+        data = Form861mSales(2022)
         assert len(data) == 24, f"year only got {len(data)=}"
-        assert set(data.index.get_level_values("date").year) == {2022}, "year filter not applied"
-        assert len(HS861m()) == 48, "year=None did not return all years"
-        assert len(HS861m(month=3)) == 4, "month only did not select that month in every year"
+        assert set(data.index.get_level_values("timestamp").year) == {2022}, "year filter not applied"
+        assert len(Form861mSales()) == 48, "year=None did not return all years"
+        assert len(Form861mSales(month=3)) == 4, "month only did not select that month in every year"
         assert cli.main("customer_demand","-y","2022","-m","8") == cli.E_OK, "CLI failed"
         for year,month in [("abc",1),(2022,13),(2022,"Foo"),(1800,1),(2019,1)]:
             try:
-                HS861m(year,month)
+                Form861mSales(year,month)
             except ValueError:
                 pass
             else:
-                raise AssertionError(f"HS861m({year=},{month=}) did not raise ValueError")
+                raise AssertionError(f"Form861mSales({year=},{month=}) did not raise ValueError")
     except Exception as err:
-        print(f"ERROR [eia.tests]: HS861m arguments --> {err}",file=sys.stderr,flush=True)
+        print(f"ERROR [eia.tests]: Form861mSales arguments --> {err}",file=sys.stderr,flush=True)
         errors += 1
         raise
     else:
-        print("HS861m arguments ok.",file=sys.stderr,flush=True)
+        print("Form861mSales arguments ok.",file=sys.stderr,flush=True)
     finally:
-        hs861m._cache = saved
+        form861msales._cache = saved
     return errors
 
 _VALIDATION_SCRIPT = '''
@@ -560,7 +566,7 @@ from eia.form860m import Form860m
 from eia.form861m import Form861m
 from eia.form923 import Form923
 from eia.form930 import Form930, Form930Fuel, _Form930Base
-from eia.hs861m import HS861m
+from eia.form861msales import Form861mSales
 _Form930Base.respondents = staticmethod(lambda refresh=False: ["CAL"])
 cases = [
     (TypeError, check_year, (2020.0, 2015), {}),
@@ -588,17 +594,23 @@ cases = [
     (ValueError, Form923, (2020, 13), {}),
     (ValueError, Form923, (2020,), {"by": "state"}),
     (TypeError, Form923, ([2020],), {}),
-    (TypeError, Form930, (None, 2020, 8), {}),
-    (ValueError, Form930, ("XXX", 2020, 8), {}),
-    (ValueError, Form930, ("CAL", 2014, 8), {}),
-    (ValueError, Form930, ("CAL", 2020, 13), {}),
-    (TypeError, Form930, ("CAL", 2020, 8), {"refresh": "yes"}),
-    (TypeError, Form930Fuel, (None, 2020, 8), {}),
-    (ValueError, Form930Fuel, ("XXX", 2020, 8), {}),
-    (ValueError, Form930Fuel, ("CAL", 2017, 8), {}),
-    (TypeError, HS861m, (2020.0, 8), {}),
-    (ValueError, HS861m, (1989, 8), {}),
-    (ValueError, HS861m, (2020, "Foo"), {}),
+    (TypeError, Form923, (2020, 8, "CA"), {}),
+    (TypeError, Form923, (2020, 8), {"plants": "6099"}),
+    (TypeError, Form860m, (2020, 8, "Planned"), {}),
+    (TypeError, Form930, (2020, 8), {}),
+    (TypeError, Form930, (2020, 8), {"respondent": None}),
+    (TypeError, Form930, ("CAL", 2020, 8), {}),
+    (ValueError, Form930, (2020, 8), {"respondent": "XXX"}),
+    (ValueError, Form930, (2014, 8), {"respondent": "CAL"}),
+    (ValueError, Form930, (2020, 13), {"respondent": "CAL"}),
+    (TypeError, Form930, (2020, 8), {"respondent": "CAL", "refresh": "yes"}),
+    (TypeError, Form930Fuel, (2020, 8), {"respondent": None}),
+    (ValueError, Form930Fuel, (2020, 8), {"respondent": "XXX"}),
+    (ValueError, Form930Fuel, (2017, 8), {"respondent": "CAL"}),
+    (TypeError, Form930Fuel, (2020, 8), {"respondent": "CAL", "fuels": 1}),
+    (TypeError, Form861mSales, (2020.0, 8), {}),
+    (ValueError, Form861mSales, (1989, 8), {}),
+    (ValueError, Form861mSales, (2020, "Foo"), {}),
 ]
 for expected, func, args, kwargs in cases:
     try:
@@ -632,33 +644,33 @@ def test_argument_validation():
         print("argument validation ok.",file=sys.stderr,flush=True)
     return errors
 
-def test_hs861m_cachedir():
+def test_form861msales_cachedir():
     """Test HS 861m uses the eia cache folder without accessing EIA data"""
     import tempfile
     import pandas as pd
-    import eia.hs861m as hs861m
+    import eia.form861msales as form861msales
     from cache import Cache
     errors = 0
-    saved = (hs861m._cache,eia.base._cache_dir,Cache.CACHEDIR)
+    saved = (form861msales._cache,eia.base._cache_dir,Cache.CACHEDIR)
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             pathname = os.path.join(tmpdir,"eia","0","hs861m.csv")
             os.makedirs(os.path.dirname(pathname))
             pd.DataFrame([{"year":2022,"month":8,"state":"CA","status":"Final",
                 "tot_energy_mwh":1.0}]).to_csv(pathname,index=False)
-            hs861m._cache = None
+            form861msales._cache = None
             eia.base.set_cache_dir(tmpdir)
-            data = HS861m(2022,8)
+            data = Form861mSales(2022,8)
             assert len(data) == 1, f"cache file in cache folder not used ({len(data)=})"
             assert Cache.CACHEDIR == saved[2], "default Cache.CACHEDIR was changed"
     except Exception as err:
-        print(f"ERROR [eia.tests]: HS861m cache folder --> {err}",file=sys.stderr,flush=True)
+        print(f"ERROR [eia.tests]: Form861mSales cache folder --> {err}",file=sys.stderr,flush=True)
         errors += 1
         raise
     else:
-        print("HS861m cache folder ok.",file=sys.stderr,flush=True)
+        print("Form861mSales cache folder ok.",file=sys.stderr,flush=True)
     finally:
-        hs861m._cache = saved[0]
+        form861msales._cache = saved[0]
         eia.base._cache_dir = saved[1]
         Cache.CACHEDIR = saved[2]
     return errors
@@ -874,7 +886,7 @@ def test_published():
         eia.base.check_published(*prev)
         eia.base.check_published(*this,lag=0)
         with mock.patch("eia.base.requests.get",side_effect=AssertionError("network accessed")):
-            for form,args in [(Form860m,this),(Form861m,this),(HS861m,this),(Form923,this)]:
+            for form,args in [(Form860m,this),(Form861m,this),(Form861mSales,this),(Form923,this)]:
                 try:
                     form(*args)
                 except ValueError as err:
@@ -884,7 +896,7 @@ def test_published():
             if now.month < 12:
                 with mock.patch.object(Form930,"_check_respondent"):
                     try:
-                        Form930("CISO",now.year,now.month+1)
+                        Form930(now.year,now.month+1,respondent="CISO")
                     except ValueError as err:
                         assert "not published" in str(err), f"Form930: {err}"
                     else:
@@ -992,21 +1004,184 @@ def test_form930():
     errors = 0
     try:
         for year,month in [(2018,1),(2018,7)]:
-            data = Form930("CISO",year,month)
+            data = Form930(year,month,respondent="CISO")
             assert len(data) == 744, f"{len(data)=} hours in {year}-{month}"
-            assert data.timestamp.iloc[0] == dt.datetime(year,month,1,tzinfo=dt.timezone.utc), "invalid first hour"
-        fuel = Form930Fuel("CISO",2018,7)
+            assert data.index[0] == dt.datetime(year,month,1,tzinfo=dt.timezone.utc), "invalid first hour"
+        fuel = Form930Fuel(2018,7,respondent="CISO")
         assert len(fuel) == 744, f"{len(fuel)=} hours"
-        assert "SUN_MW" in fuel.columns, "no solar data"
-        total = fuel.drop("timestamp",axis=1).sum(axis=1,min_count=1)
-        error = (total - data.generation_MW).abs().median()
-        assert error < 0.01*data.generation_MW.median(), f"fuel total differs from net generation by {error=}"
+        assert "sun_mw" in fuel.columns, "no solar data"
+        total = fuel.sum(axis=1,min_count=1)
+        error = (total - data.generation_mw).abs().median()
+        assert error < 0.01*data.generation_mw.median(), f"fuel total differs from net generation by {error=}"
     except Exception as err:
         print(f"ERROR [eia.tests]: Form930 --> {err}",file=sys.stderr,flush=True)
         errors += 1
         raise
     else:
         print("Form930 ok.",file=sys.stderr,flush=True)
+    return errors
+
+def _write_conventions_fixtures(tmpdir):
+    """@private Write synthetic EIA cache files for every form (no network access)"""
+    import pandas as pd
+    import eia.form861msales as form861msales
+    base = os.path.join(tmpdir,"eia","1")
+
+    # Form 860m: workbook placeholder and subset cache with EIA headers
+    os.makedirs(os.path.join(base,"form860m"))
+    with open(os.path.join(base,"form860m","2020-08.xlsx"),"wb") as fh:
+        fh.write(b"placeholder")
+    pd.DataFrame({
+        "Entity ID":[1,1],"Entity Name":["Owner","Owner"],"Plant ID":[10,10],
+        "Plant Name":["Plant","Plant"],"Plant State":["CA","CA"],"Generator ID":["G2","G1"],
+        "Balancing Authority Code":["CISO","CISO"],"Nameplate Capacity (MW)":[5.0,7.5],
+        "Energy Source Code":["SUN","NG"],"Prime Mover Code":["PV","GT"],"Operating Year":[2019,2001],
+        }).to_csv(os.path.join(base,"form860m","2020-08-operating.csv.gz"),index=False,compression="gzip")
+
+    # Form 861m: workbook with two months
+    os.makedirs(os.path.join(base,"form861m"))
+    _form861m_workbook(os.path.join(base,"form861m","2020.xlsx"),2020,[7,8])
+
+    # Form 861m sales: in-process table
+    form861msales._cache = pd.DataFrame([{"year":2020,"month":m,"state":s,"status":"Final",
+        "tot_energy_mwh":1.0} for m in (7,8) for s in ("CA","WA")])
+
+    # Form 923: raw worksheet cache with the original EIA headers
+    os.makedirs(os.path.join(base,"form923"))
+    months = [dt.date(2020,x,1).strftime("%B") for x in range(1,13)]
+    rows = [[6099,"Hydro","CA","CISO","HY","WAT"],[286,"Gas","CA","CISO","CT","NG"]]
+    columns = ["Plant Id","Plant Name","Plant State","Balancing\nAuthority Code",
+        "Reported\nPrime Mover","Reported\nFuel Type Code"] \
+        + [f"Quantity\n{x}" for x in months] + [f"Netgen\n{x}" for x in months]
+    pd.DataFrame([x + ["1"]*12 + [str(10*(n+1))]*12 for n,x in enumerate(rows)],columns=columns) \
+        .to_csv(os.path.join(base,"form923","2020-raw.csv.gz"),index=False,compression="gzip")
+
+    # Form 930: API records cache (UTC hour-ending periods)
+    hours = pd.date_range("2020-08-01 01:00","2020-09-01 00:00",freq="h")
+    for route,column,codes in [("region-data","type",["D","NG","TI"]),
+            ("fuel-type-data","fueltype",["NG","WAT"])]:
+        os.makedirs(os.path.join(base,"form930",route))
+        pd.DataFrame([{"period":x.strftime("%Y-%m-%dT%H"),"respondent":"CAL",column:c,"value":1.0}
+            for x in hours for c in codes]).to_csv(
+            os.path.join(base,"form930",route,"CAL-2020-08.csv.gz"),index=False,compression="gzip")
+
+def test_conventions():
+    """Test every form follows the public API convention without accessing EIA data"""
+    # pylint: disable=too-many-locals,too-many-statements
+    import inspect
+    import tempfile
+    from unittest import mock
+    import pandas as pd
+    import eia.form861m
+    import eia.form861msales as form861msales
+    from eia.form930 import _Form930Base
+    errors = 0
+    saved = (eia.base._cache_dir,form861msales._cache)
+    forms = [Form860m,Form861m,Form861mSales,Form923,Form930,Form930Fuel]
+    try:
+        # signatures: year and month are the only positional arguments
+        for form in forms:
+            params = list(inspect.signature(form.__init__).parameters.values())[1:]
+            positional = [x.name for x in params if x.kind == x.POSITIONAL_OR_KEYWORD]
+            assert positional == ["year","month"], f"{form.__name__} positional arguments {positional}"
+            names = [x.name for x in params]
+            assert names[-2:] == ["raw","refresh"], f"{form.__name__} does not end with raw, refresh"
+
+        with tempfile.TemporaryDirectory() as tmpdir, \
+                mock.patch("eia.base.requests.get",side_effect=AssertionError("network accessed")), \
+                mock.patch.object(_Form930Base,"respondents",staticmethod(lambda refresh=False:["CAL"])):
+            eia.base.set_cache_dir(tmpdir)
+            eia.form861m._cache.clear()
+            _write_conventions_fixtures(tmpdir)
+            august = pd.Timestamp("2020-08-01",tz="UTC")
+            frames = {
+                "Form860m": (Form860m(2020,8),["timestamp","plant","generator"],2),
+                "Form861m": (Form861m(2020,8),["timestamp","state"],2),
+                "Form861mSales": (Form861mSales(2020,8),["timestamp","state"],2),
+                "Form923": (Form923(2020,8),["timestamp","state","ba","fuel"],2),
+                "Form923 plant": (Form923(2020,8,by="plant",plants=6099),
+                    ["timestamp","state","ba","plant","pm","fuel"],1),
+                "Form930": (Form930(2020,8,respondent="CAL"),["timestamp"],744),
+                "Form930Fuel": (Form930Fuel(2020,8,respondent="CAL",fuels="wat"),["timestamp"],744),
+                }
+            for name,(data,index,rows) in frames.items():
+                assert list(data.index.names) == index, f"{name} index {list(data.index.names)}"
+                assert len(data) == rows, f"{name} has {len(data)} rows, not {rows}"
+                timestamps = data.index.get_level_values("timestamp")
+                assert str(timestamps.tz) == "UTC", f"{name} timestamps are not UTC"
+                assert timestamps.min() == august, f"{name} starts at {timestamps.min()}"
+                bad = [x for x in data.columns if x != x.lower()]
+                assert not bad, f"{name} columns are not lower case: {bad}"
+                assert type(data.head()) is pd.DataFrame, f"{name}.head() is {type(data.head())}"
+            assert frames["Form860m"][0].index[0][2] == "G1", "Form860m is not sorted by generator"
+            assert frames["Form860m"][0]["nameplate_mw"].sum() == 12.5, "Form860m nameplate_mw"
+            assert frames["Form923"][0]["gen_mwh"].sum() == 30, "Form923 gen_mwh"
+            assert list(frames["Form930"][0].columns) == ["load_mw","generation_mw","interchange_mw"], \
+                f"Form930 columns {list(frames['Form930'][0].columns)}"
+            assert list(frames["Form930Fuel"][0].columns) == ["wat_mw"], \
+                f"Form930Fuel columns {list(frames['Form930Fuel'][0].columns)}"
+
+            # whole year
+            assert len(Form861m(2020)) == 4, "Form861m month=None"
+            assert len(Form923(2020)) == 24, "Form923 month=None"
+            assert len(Form861mSales(2020)) == 4, "Form861mSales month=None"
+
+            # raw data: default index, only the period selection applied
+            raw = {
+                "Form860m": Form860m(2020,8,raw=True),
+                "Form861m": Form861m(2020,8,raw=True),
+                "Form861mSales": Form861mSales(2020,8,raw=True),
+                "Form923": Form923(2020,8,raw=True),
+                "Form930": Form930(2020,8,respondent="CAL",raw=True),
+                "Form930Fuel": Form930Fuel(2020,8,respondent="CAL",raw=True),
+                }
+            for name,data in raw.items():
+                assert isinstance(data.index,pd.RangeIndex), f"{name} raw index is {type(data.index)}"
+                assert len(data) > 0, f"{name} raw is empty"
+            assert "Plant ID" in raw["Form860m"].columns, "Form860m raw renamed columns"
+            assert "Netgen\nAugust" in raw["Form923"].columns, "Form923 raw is missing August"
+            assert "Netgen\nJuly" not in raw["Form923"].columns, "Form923 raw includes other months"
+            assert len(raw["Form930"]) == 744*3 and "period" in raw["Form930"].columns, "Form930 raw"
+            assert len(raw["Form930Fuel"]) == 744*2, "Form930Fuel raw applied the fuels filter"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: conventions --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("conventions ok.",file=sys.stderr,flush=True)
+    finally:
+        eia.base._cache_dir = saved[0]
+        form861msales._cache = saved[1]
+        eia.form861m._cache.clear()
+    return errors
+
+def test_cli_xlsx_timestamps():
+    """Test CLI writes tz-aware timestamps to XLSX without accessing EIA data"""
+    import tempfile
+    import pandas as pd
+    errors = 0
+    class Stub(Form861m):
+        """Frame with a tz-aware timestamp index"""
+        # pylint: disable=super-init-not-called,unused-argument
+        def __init__(self,year,month=None,*,raw=False,refresh=False):
+            index = pd.MultiIndex.from_tuples([(pd.Timestamp("2020-08-01",tz="UTC"),"CA")],
+                names=["timestamp","state"])
+            pd.DataFrame.__init__(self,{"tot_mw":[1.0]},index=index)
+    Stub.__init__.__annotations__.update(Form861m.__init__.__annotations__)
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = os.path.join(tmpdir,"out.xlsx")
+            codes = _run_cli("distributed_generation",Stub,["-y","2020","-m","8","-o",output])
+            assert codes == [cli.E_OK], f"xlsx output returned {codes=}"
+            data = pd.read_excel(output)
+            assert list(data.columns) == ["timestamp","state","tot_mw"], f"xlsx columns {list(data.columns)}"
+            assert data["timestamp"].iloc[0] == pd.Timestamp("2020-08-01"), "xlsx timestamp"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: cli xlsx timestamps --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("cli xlsx timestamps ok.",file=sys.stderr,flush=True)
     return errors
 
 if __name__ == "__main__":

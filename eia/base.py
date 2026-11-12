@@ -479,8 +479,85 @@ def check_choice(name:str,value,choices) -> typing.Any:
         raise ValueError(f"{name}={value!r} is not valid (must be one of {list(choices)})")
     return value
 
+def check_list(name:str,value,item:type=str) -> list|None:
+    """@private Coerce a filter argument to a list
+
+    Arguments
+    ---------
+
+      - `name`: argument name (used in error messages)
+
+      - `value`: a single value, a list (or tuple or set) of values, or
+        `None`
+
+      - `item`: type of each value
+
+    Returns
+    -------
+
+      - `list|None`: list of values, or `None` when `value` is `None`
+        (meaning "all")
+
+    Raises
+    ------
+
+      - `TypeError`: a value is not of type `item`
+    """
+    if value is None:
+        return None
+    values = list(value) if isinstance(value,(list,tuple,set)) else [value]
+    for x in values:
+        if not isinstance(x,item) or (item is int and isinstance(x,bool)):
+            raise TypeError(f"{name} must be a {item.__name__} or a list of {item.__name__}, "
+                f"not {type(x).__name__}")
+    return values
+
+def month_start(year:int,month:int) -> pd.Timestamp:
+    """@private Get the UTC timestamp of the beginning of a month"""
+    return pd.Timestamp(year=year,month=month,day=1,tz="UTC")
+
 class FormBase(pd.DataFrame):
-    """Base class for EIA form data frames"""
+    """Base class for EIA form data frames
+
+    Public API convention
+    ---------------------
+
+    Every form follows the same convention (see `DESIGN.md` §5):
+
+      - **Signature.** `Form(year, month=None, *, <filters>, raw=False,
+        refresh=False)`. `year` and `month` are the only positional
+        arguments; everything else is keyword-only. A required subject,
+        such as the Form 930 `respondent`, is keyword-only with no default.
+
+      - **Period.** `year` and `month` accept an `int` or a numeric `str`
+        (`month` also accepts a name or abbreviation). `month=None`
+        selects the whole year where the form supports it.
+
+      - **Filters.** A filter accepts a single value or a list; `None`
+        means "all".
+
+      - **Time and shape.** The index is a `MultiIndex` (or, for Form 930,
+        a `DatetimeIndex`) whose first level is `timestamp`, the
+        tz-aware UTC beginning of the month or hour, followed by the
+        natural keys of a row. Measured values are columns.
+
+      - **Columns.** `lower_snake_case`, with a unit suffix on measured
+        values (`_mw`, `_mwh`, `_kusd`, `_cpkwh`, `_qty`).
+
+      - **Raw data.** `raw=True` returns the EIA data with only the period
+        selection applied (no renaming, coercion, filtering or index).
+
+    The form classes are loaders: the result of a pandas operation on a
+    form (e.g., `.loc[]`, `.groupby()`, arithmetic) is a plain
+    `pandas.DataFrame`, not an instance of the form class.
+    """
+
+    _metadata = []
+
+    @property
+    def _constructor(self):
+        """@private pandas operations return plain data frames"""
+        return pd.DataFrame
 
     @staticmethod
     def _accepts_int(annotation) -> bool:

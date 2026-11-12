@@ -7,22 +7,22 @@ To get the August 2020 California load, generation, and interchange use the
 following
 
     from eia import Form930
-    Form930("CAL",2020,8)
+    Form930(2020,8,respondent="CAL")
 
 To get the August 2020 Bonneville Power Administration net generation by
 energy source use the following
 
     from eia import Form930Fuel
-    Form930Fuel("BPAT",2020,8)
+    Form930Fuel(2020,8,respondent="BPAT")
 
-which returns one `{code}_MW` column per energy source reported by the
-respondent, e.g., `NG_MW`, `NUC_MW`, `SUN_MW`, `WAT_MW`, `WND_MW`.
+which returns one `{code}_mw` column per energy source reported by the
+respondent, e.g., `ng_mw`, `nuc_mw`, `sun_mw`, `wat_mw`, `wnd_mw`.
 
 Time convention
 ---------------
 
 The EIA API reports hourly values in UTC with the timestamp at the end of
-the hour. Both classes return a `timestamp` column in UTC at the **beginning**
+the hour. Both classes are indexed by `timestamp` in UTC at the **beginning**
 of the hour, so the value at `2020-08-01 00:00:00+00:00` covers
 00:00 to 01:00 UTC.
 
@@ -49,7 +49,7 @@ import zipfile
 import pandas as pd
 
 from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, \
-    check_published, latest_month, download
+    check_published, check_list, latest_month, download
 
 API_KEY_ENV = "EIA_API_KEY"
 """Environment variable holding the EIA Open Data API key"""
@@ -158,7 +158,7 @@ class _Form930Base(FormBase):
             if not data or offset >= int(response.get("total",0)):
                 break
         if not result:
-            return pd.DataFrame(columns=["period","respondent","type","fueltype","value"])
+            return cls._empty_raw()
         return pd.DataFrame(result)
 
     @classmethod
@@ -176,6 +176,11 @@ class _Form930Base(FormBase):
         return data
 
     @staticmethod
+    def _empty_raw() -> pd.DataFrame:
+        """@private Empty API record frame"""
+        return pd.DataFrame(columns=["period","respondent","type","fueltype","value"])
+
+    @staticmethod
     def _timestamp(period:pd.Series) -> pd.DatetimeIndex:
         """@private Convert API UTC hour-ending periods to hour-beginning timestamps"""
         return pd.DatetimeIndex(pd.to_datetime(period,format="%Y-%m-%dT%H",utc=True)) - pd.Timedelta(hours=1)
@@ -191,7 +196,7 @@ class _Form930Base(FormBase):
         """
         if not isinstance(value,str):
             raise TypeError(f"{name} must be a str, not {type(value).__name__} "
-                "(`--region` on the command line)")
+                "(`--respondent` or `--region` on the command line)")
         if value in cls.respondents(refresh=refresh):
             return
         if not refresh and not _Form930Base._references_refreshed \
@@ -280,22 +285,32 @@ class _Form930Base(FormBase):
 class Form930(_Form930Base):
     """Form930 load, generation, and interchange data frame
 
-    Columns
-    -------
+    Index
+    -----
 
       - `timestamp`: UTC date and time of the beginning of the hour
 
-      - `load_MW`: load value
+    Columns
+    -------
 
-      - `generation_MW`: net generation value
+      - `load_mw`: load (demand) in MW
 
-      - `interchange_MW`: total interchange value (positive is export)
+      - `generation_mw`: net generation in MW
+
+      - `interchange_mw`: total interchange in MW (positive is export)
+
+    Missing hours are `NaN`.
+
+    If the `raw` argument is `True`, the EIA API records for the requested
+    period are returned unchanged (columns `period`, `respondent`, `type`,
+    `value`, and the other fields the API returns; `period` is UTC
+    hour-ending) with a default integer index.
     """
 
     TYPES = {
-        "D": "load_MW",
-        "NG": "generation_MW",
-        "TI": "interchange_MW",
+        "D": "load_mw",
+        "NG": "generation_mw",
+        "TI": "interchange_mw",
         }
     """API data types and the columns they are returned in"""
 
@@ -313,10 +328,11 @@ class Form930(_Form930Base):
     for timestamps, which are UTC)"""
 
     def __init__(self,
-        region:str,
         year:int|str,
         month:int|str|None=None,
         *,
+        respondent:str,
+        raw:bool=False,
         refresh:bool=False,
         ):
         """Access Form 930 data for a region or balancing authority
@@ -324,14 +340,16 @@ class Form930(_Form930Base):
         Arguments
         ---------
 
-          - `region`: region or balancing authority code (see
-            `eia.Form930.respondents()`)
-
           - `year`: year of data (2015 or later, as `int` or `str`)
 
           - `month`: month of data (1 to 12, or a name or abbreviation such
             as `"Aug"`; `None` accesses entire year; months before July 2015
             are omitted)
+
+          - `respondent`: region or balancing authority code (required; see
+            `eia.Form930.respondents()`)
+
+          - `raw`: return the EIA API records unchanged (default `False`)
 
           - `refresh`: force cache refresh (including the respondent
             reference data)
@@ -339,57 +357,76 @@ class Form930(_Form930Base):
         Raises
         ------
 
-          - `TypeError`: an argument has the wrong type, or `region` is
+          - `TypeError`: an argument has the wrong type, or `respondent` is
             missing
 
-          - `ValueError`: `region`, `year` or `month` is not valid, or the
-            month is in the future
+          - `ValueError`: `respondent`, `year` or `month` is not valid, or
+            the month is in the future
         """
         year = check_year(year,self.FIRST_MONTH[0])
         month = check_month(month,optional=True)
+        raw = check_bool("raw",raw)
         refresh = check_bool("refresh",refresh)
-        self._check_respondent("region",region,refresh=refresh)
+        self._check_respondent("respondent",respondent,refresh=refresh)
 
         result = []
         for mon in _months(year,month):
             if (year,mon) < self.FIRST_MONTH:
                 continue
-            data = self._cached("region-data",region,{"respondent":[region],"type":list(self.TYPES)},
-                year,mon,refresh)
+            data = self._cached("region-data",respondent,
+                {"respondent":[respondent],"type":list(self.TYPES)},year,mon,refresh)
+            if raw:
+                result.append(data)
+                continue
             data = data.assign(timestamp=self._timestamp(data["period"]),value=data["value"].astype(float))
             data = data.pivot_table(index="timestamp",columns="type",values="value",aggfunc="sum")
             data = data.reindex(index=_hours(year,mon),columns=list(self.TYPES)).rename(self.TYPES,axis=1)
             data.columns.name = None
-            result.append(data.reset_index())
+            result.append(data)
 
-        super().__init__(pd.concat(result,ignore_index=True) if result \
-            else pd.DataFrame(columns=["timestamp"]+list(self.TYPES.values())))
+        if raw:
+            super().__init__(pd.concat(result,ignore_index=True) if result else self._empty_raw())
+        elif result:
+            super().__init__(pd.concat(result))
+        else:
+            super().__init__(pd.DataFrame(columns=list(self.TYPES.values()),dtype=float,
+                index=pd.DatetimeIndex([],tz="UTC",name="timestamp")))
 
 class Form930Fuel(_Form930Base):
     """Form930 net generation by energy source data frame
 
-    Columns
-    -------
+    Index
+    -----
 
       - `timestamp`: UTC date and time of the beginning of the hour
 
-      - `{code}_MW`: net generation from energy source `code`, one column per
-        code the respondent reports, e.g., `COL`, `NG`, `NUC`, `OIL`, `OTH`,
-        `SUN`, `WAT`, `WND`, and the newer storage and geothermal codes.
+    Columns
+    -------
+
+      - `{code}_mw`: net generation in MW from energy source `code`
+        (lower-cased EIA code), one column per code the respondent reports,
+        e.g., `col_mw`, `ng_mw`, `nuc_mw`, `oil_mw`, `oth_mw`, `sun_mw`,
+        `wat_mw`, `wnd_mw`, and the newer storage and geothermal codes.
 
     Missing hours are `NaN`. Codes a respondent never reports in the period are
     not included as columns.
+
+    If the `raw` argument is `True`, the EIA API records for the requested
+    period are returned unchanged (columns `period`, `respondent`,
+    `fueltype`, `value`, and the other fields the API returns; `period` is
+    UTC hour-ending) with a default integer index; `fuels` is ignored.
     """
 
     FIRST_MONTH = (2018,7)
     """First year and month of data available"""
 
     def __init__(self,
-        respondent:str,
         year:int|str,
         month:int|str|None=None,
         *,
+        respondent:str,
         fuels:list[str]|None=None,
+        raw:bool=False,
         refresh:bool=False,
         ):
         """Access Form 930 net generation by energy source
@@ -397,16 +434,19 @@ class Form930Fuel(_Form930Base):
         Arguments
         ---------
 
-          - `respondent`: balancing authority or region code (see
-            `eia.Form930Fuel.respondents()`)
-
           - `year`: year of data (2018 or later, as `int` or `str`)
 
           - `month`: month of data (1 to 12, or a name or abbreviation such
             as `"Aug"`; `None` accesses entire year; months before July 2018
             are omitted)
 
-          - `fuels`: energy source codes to include (`None` includes all)
+          - `respondent`: balancing authority or region code (required; see
+            `eia.Form930Fuel.respondents()`)
+
+          - `fuels`: energy source code or codes to include, e.g., `"NG"` or
+            `["wat","wnd"]` (not case sensitive; `None` includes all)
+
+          - `raw`: return the EIA API records unchanged (default `False`)
 
           - `refresh`: force cache refresh
 
@@ -422,10 +462,12 @@ class Form930Fuel(_Form930Base):
         """
         year = check_year(year,self.FIRST_MONTH[0])
         month = check_month(month,optional=True)
+        fuels = check_list("fuels",fuels)
+        raw = check_bool("raw",raw)
         refresh = check_bool("refresh",refresh)
         self._check_respondent("respondent",respondent,refresh=refresh)
-        if isinstance(fuels,str):
-            fuels = [fuels]
+        if fuels is not None:
+            fuels = [x.upper() for x in fuels]
 
         result = []
         for mon in _months(year,month):
@@ -433,23 +475,29 @@ class Form930Fuel(_Form930Base):
                 continue
             data = self._cached("fuel-type-data",respondent,{"respondent":[respondent]},
                 year,mon,refresh)
+            if raw:
+                result.append(data)
+                continue
             if fuels is not None:
-                data = data.loc[data["fueltype"].isin(fuels)]
+                data = data.loc[data["fueltype"].str.upper().isin(fuels)]
             data = data.assign(timestamp=self._timestamp(data["period"]),value=data["value"].astype(float))
             data = data.pivot_table(index="timestamp",columns="fueltype",values="value",aggfunc="sum")
             data = data.reindex(index=_hours(year,mon))
-            data.columns = [f"{x}_MW" for x in data.columns]
-            result.append(data.reset_index())
+            data.columns = [f"{x.lower()}_mw" for x in data.columns]
+            result.append(data)
 
         if not result:
             raise ValueError(f"no energy source data before {self.FIRST_MONTH} ({year=}, {month=})")
-        data = pd.concat(result,ignore_index=True)
-        super().__init__(data[["timestamp"]+sorted(x for x in data.columns if x != "timestamp")])
+        if raw:
+            super().__init__(pd.concat(result,ignore_index=True))
+            return
+        data = pd.concat(result)
+        super().__init__(data[sorted(data.columns)])
 
 if __name__ == "__main__":
 
     pd.options.display.width = None
     pd.options.display.max_columns = None
 
-    print(Form930("CAL",2020,8))
-    print(Form930Fuel("BPAT",2020,8))
+    print(Form930(2020,8,respondent="CAL"))
+    print(Form930Fuel(2020,8,respondent="BPAT"))

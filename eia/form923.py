@@ -50,7 +50,7 @@ import calendar
 import pandas as pd
 
 from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, check_choice, \
-    check_published, download
+    check_published, check_list, download
 
 class Form923(FormBase):
     """Form923 DataFrame
@@ -102,16 +102,17 @@ class Form923(FormBase):
     def __init__(self,
         year:int|str,
         month:int|str|None=None,
+        *,
         states:list[str]|None=None,
         bas:list[str]|None=None,
         fuels:list[str]|None=None,
-        *,
-        by:str="ba",
         plants:list[int]|None=None,
+        by:str="ba",
         increments:bool=True,
-        precision:int=3,
-        refresh:bool=False,
         nonzero:bool=True,
+        precision:int=3,
+        raw:bool=False,
+        refresh:bool=False,
         ):
         """Construct Form923 data frame
 
@@ -120,15 +121,21 @@ class Form923(FormBase):
         - `year`: year of query (2008 to present, as `int` or `str`)
         - `month`: month to include (1 to 12, or a name or abbreviation such
           as `"Aug"`; `None` returns entire year)
-        - `states`: states to include (`None` returns all states found)
-        - `bas`: balancing authorities to include (`None` returns all BAs found)
-        - `fuels`: fuel types to include (`None` returns all fuel types found)
+        - `states`: state or states to include (`None` returns all states found)
+        - `bas`: balancing authority or authorities to include (`None` returns
+          all BAs found)
+        - `fuels`: fuel type or types to include (`None` returns all fuel types
+          found)
+        - `plants`: plant id or ids to include (`None` returns all plants found)
         - `by`: aggregation level, `"ba"` (default) or `"plant"`
-        - `plants`: plant ids to include (`None` returns all plants found)
         - `increments`: include state-fuel level increment rows (plant `99999`)
-        - `precision`: precision of cached data
-        - `refresh`: force cache refresh
         - `nonzero`: drop zero and missing values (negative values are kept)
+        - `precision`: precision of cached data
+        - `raw`: return the EIA "Page 1 Generation and Fuel Data" worksheet
+          with its original column names, all values as strings, and a
+          default integer index; when `month` is given, the monthly columns
+          of the other months are omitted; the other filters are ignored
+        - `refresh`: force cache refresh
 
         Raises
         ------
@@ -146,9 +153,23 @@ class Form923(FormBase):
         if month is not None:
             check_published(year,month)
         check_choice("by",by,self.INDEX)
+        states = check_list("states",states)
+        bas = check_list("bas",bas)
+        fuels = check_list("fuels",fuels)
+        plants = check_list("plants",plants,int)
         increments = check_bool("increments",increments)
-        refresh = check_bool("refresh",refresh)
         nonzero = check_bool("nonzero",nonzero)
+        raw = check_bool("raw",raw)
+        refresh = check_bool("refresh",refresh)
+
+        # raw worksheet
+        if raw:
+            df = self._workbook(year,refresh=refresh)
+            if month is not None:
+                others = {calendar.month_name[x].lower() for x in range(1,13) if x != month}
+                df = df[[x for x in df.columns if str(x).split()[-1].lower() not in others]]
+            super().__init__(df)
+            return
 
         # load plant-level data (cached)
         df = self._load(year,precision=precision,refresh=refresh)
@@ -157,8 +178,6 @@ class Form923(FormBase):
         if not increments:
             df = df.loc[df["PLANT"]!=self.PLANT_INCREMENT]
         if plants is not None:
-            if isinstance(plants,int):
-                plants = [plants]
             df = df.loc[df["PLANT"].isin(plants)]
 
         # aggregate to requested level
@@ -178,31 +197,25 @@ class Form923(FormBase):
         # select states, balancing authorities, and fuels
         for column,values in {"state":states,"ba":bas,"fuel":fuels}.items():
             if values is not None:
-                if isinstance(values,str):
-                    values = [values]
                 df = df.loc[df[column].isin(values)]
 
         # make date/time index
         df = df.assign(timestamp=pd.DatetimeIndex([f"{x}-01 00:00:00+0000" for x in df["month"]]))
 
         # construct final data frame
-        super().__init__(df.set_index(["timestamp"]+[x.lower() for x in index])[["gen_mwh"]])
+        super().__init__(df.set_index(["timestamp"]+[x.lower() for x in index])[["gen_mwh"]].sort_index())
 
     @classmethod
-    def _load(cls,year:int,precision:int=3,refresh:bool=False) -> pd.DataFrame:
-        """@private Load plant-level monthly net generation for a year
+    def _workbook(cls,year:int,refresh:bool=False) -> pd.DataFrame:
+        """@private Load the EIA generation and fuel worksheet for a year
 
-        Returns a data frame with columns `PLANT`, `NAME`, `STATE`, `BA`, `PM`,
-        `FUEL`, and one column per month named `YYYY-MM`.
+        Returns the worksheet with its original column names and all values
+        as strings (cached).
         """
-        cache = cache_entry("form923",f"{year}.csv.gz",version=1)
+        cache = cache_entry("form923",f"{year}-raw.csv.gz",version=1)
         if cache.exists() and not refresh:
             try:
-                return pd.read_csv(cache.pathname,
-                    dtype={"STATE":str,"BA":str,"PM":str,"FUEL":str,"NAME":str},
-                    keep_default_na=False,
-                    na_values=[""],
-                    )
+                return pd.read_csv(cache.pathname,dtype=str,keep_default_na=False,na_values=[""])
             except Exception as err: # pylint: disable=broad-exception-caught
                 warn(f"{cache.pathname=} {err=} - regenerating cache")
                 cache.delete()
@@ -223,11 +236,32 @@ class Form923(FormBase):
             names = [x for x in fh.namelist() if x.startswith(prefix) and x.endswith(".xlsx")]
             if not names:
                 raise RuntimeError(f"no file starting with {prefix=} found for {year=}")
-            df = pd.read_excel(fh.open(names[0]),
-                skiprows=5,
-                na_values=["."],
-                dtype={"Plant State":str},
-                )
+            df = pd.read_excel(fh.open(names[0]),skiprows=5,dtype=str)
+
+        # save data to cache
+        df.to_csv(cache.pathname,index=False,header=True,compression="gzip")
+        return df
+
+    @classmethod
+    def _load(cls,year:int,precision:int=3,refresh:bool=False) -> pd.DataFrame:
+        """@private Load plant-level monthly net generation for a year
+
+        Returns a data frame with columns `PLANT`, `NAME`, `STATE`, `BA`, `PM`,
+        `FUEL`, and one column per month named `YYYY-MM`.
+        """
+        cache = cache_entry("form923",f"{year}.csv.gz",version=1)
+        if cache.exists() and not refresh:
+            try:
+                return pd.read_csv(cache.pathname,
+                    dtype={"STATE":str,"BA":str,"PM":str,"FUEL":str,"NAME":str},
+                    keep_default_na=False,
+                    na_values=[""],
+                    )
+            except Exception as err: # pylint: disable=broad-exception-caught
+                warn(f"{cache.pathname=} {err=} - regenerating cache")
+                cache.delete()
+
+        df = cls._workbook(year,refresh=refresh)
 
         # normalize headers (e.g., "Reported\\nFuel Type Code" -> "reported fuel type code")
         df.columns = [" ".join(str(x).split()).lower() for x in df.columns]
@@ -237,7 +271,8 @@ class Form923(FormBase):
             raise RuntimeError(f"{year=} workbook is missing columns {missing}")
         df = df[list(cls.COLUMNS)+list(months)].rename(cls.COLUMNS|months,axis=1)
         df["PLANT"] = df["PLANT"].astype(int)
-        df[list(months.values())] = df[list(months.values())].astype(float).round(precision)
+        df[list(months.values())] = df[list(months.values())].apply(
+            pd.to_numeric,errors="coerce").astype(float).round(precision)
 
         # save data to cache
         df.to_csv(cache.pathname,index=False,header=True,compression="gzip")

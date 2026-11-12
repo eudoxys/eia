@@ -19,6 +19,23 @@ First public release. Changes since the initial import:
 
 ### Changed
 
+- **Breaking:** consistent public API across all forms (#19). Every form
+  takes `Form(year, month=None, *, <filters>, raw=False, refresh=False)`;
+  filters and options are keyword-only, and Form 930 takes
+  `respondent=` instead of a leading `region`/`respondent` argument
+  (`Form930(2020, 8, respondent="CAL")`). Every frame is indexed by a UTC
+  `timestamp` (beginning of the month or hour) followed by its natural keys,
+  and all column names are lower-case with a unit suffix (e.g., Form 860m
+  `NAMEPLATE_MW` → `nameplate_mw`, Form 930 `load_MW` → `load_mw`,
+  `NG_MW` → `ng_mw`). The `date` column/index level is now `timestamp`.
+- **Breaking:** `HS861m` is renamed `Form861mSales` (module
+  `eia.form861msales`) (#19).
+- `raw=True` is supported by every form, including `Form923`, `Form930`,
+  and `Form930Fuel` (#19); `Form861m` accepts `month=None` for a whole year.
+- Pandas operations on a form return plain `pandas.DataFrame` objects (#19).
+- CLI: `-r/--respondent` is the primary name of the Form 930 option
+  (`--region` still works), and `.xlsx` output writes UTC timestamps without
+  a time zone (#19).
 - Downloaded data are cached in the user cache folder instead of inside the
   installed package (#36).
 - Uniform network handling, published-month bounds, and refreshable Form 930
@@ -32,6 +49,8 @@ First public release. Changes since the initial import:
 - CLI `bulk_generation` uses Form 860m (#28), `region_hourly` works (#29),
   and output formats and error reporting are handled correctly (#35).
 - `customer_demand` (HS861m) year and month handling (#30).
+- `raw=True` on the Form 861m sales table applies the `year` and `month`
+  selection (#27).
 - Corrupt Form 860m cache files are reported instead of raising
   `UnboundLocalError` (#31).
 - Form 861m keeps its cache when a month is missing and tries both URLs (#32).

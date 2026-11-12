@@ -17,7 +17,7 @@ import warnings
 import zipfile
 import pandas as pd
 from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, check_choice, \
-    check_published, download
+    check_published, download, month_start
 
 def _int(s,default=0):
     try:
@@ -36,47 +36,55 @@ class Form860m(FormBase):
     """The `Form860m` class is a Pandas data frame loaded with the EIA Form 860m
     monthly archive of electric generator inventory.
 
-    The data frame has a default integer index and one row per generator in
-    the requested `subset` of the fleet as of the requested month. The
-    columns are the values of `COLUMNS`:
+    Form 860m is a point-in-time inventory, not a time series. The data frame
+    has one row per generator in the requested `subset` of the fleet as of
+    the requested month, and is indexed by
 
-      - `OWNER_ID`, `OWNER_NAME`: EIA entity (owner) id and name
+      - `timestamp`: the report month (UTC, first day of the month)
 
-      - `ID`, `NAME`: EIA plant id and name
+      - `plant`: EIA plant id
 
-      - `STATE`, `COUNTY`, `BA_CODE`: plant location and balancing authority
+      - `generator`: EIA generator id
 
-      - `SECTOR`, `GENERATOR_ID`, `UNIT_CODE`: sector, generator id, and unit
-        code
+    The columns are the values of `COLUMNS` (other than the index levels):
 
-      - `NAMEPLATE_MW`, `SUMMER_MW`, `WINTER_MW`, `DC_NET_MW`: nameplate,
+      - `owner`, `owner_name`: EIA entity (owner) id and name
+
+      - `plant_name`: EIA plant name
+
+      - `state`, `county`, `ba`: plant location and balancing authority code
+
+      - `sector`, `unit`: sector and unit code
+
+      - `nameplate_mw`, `summer_mw`, `winter_mw`, `dc_net_mw`: nameplate,
         net summer, net winter, and DC net capacity in MW
 
-      - `NAMEPLATE_MWH`: nameplate energy capacity in MWh (storage)
+      - `nameplate_mwh`: nameplate energy capacity in MWh (storage)
 
-      - `TECHNOLOGY`, `ENERGY_SOURCE_CODE`, `PRIME_MOVER_CODE`: technology,
-        energy source, and prime mover
+      - `technology`, `fuel`, `pm`: technology, energy source code, and
+        prime mover code
 
-      - `OPERATING_MONTH`, `OPERATING_YEAR`: month and year the generator
+      - `operating_month`, `operating_year`: month and year the generator
         began operating
 
-      - `PLANNED_RETIREMENT_MONTH`, `PLANNED_RETIREMENT_YEAR`: planned
+      - `planned_retirement_month`, `planned_retirement_year`: planned
         retirement month and year
 
-      - `STATUS`: generator status code
+      - `status`: generator status code
 
-      - `PLANNED_DERATE_YEAR`, `PLANNED_DERATE_MONTH`, `DERATE_SUMMER_MW`,
-        `PLANNED_UPRATE_YEAR`, `PLANNED_UPRATE_MONTH`, `UPRATE_SUMMER_MW`:
+      - `planned_derate_year`, `planned_derate_month`, `planned_derate_summer_mw`,
+        `planned_uprate_year`, `planned_uprate_month`, `planned_uprate_summer_mw`:
         planned changes to net summer capacity
 
-      - `LAT`, `LON`: plant latitude and longitude
+      - `latitude`, `longitude`: plant latitude and longitude in degrees
 
     Columns absent from a month's workbook are filled with `0` (integers),
     `NaN` (floats), or `""` (strings); missing or non-numeric values in
     existing integer and float columns are set the same way.
 
-    If the `raw` argument is `True`, the EIA worksheet is returned with its
-    original column names and all values as strings.
+    If the `raw` argument is `True`, the EIA worksheet is returned with a
+    default integer index, its original column names, and all values as
+    strings.
     """
 
     # pylint: disable=invalid-name
@@ -95,48 +103,52 @@ class Form860m(FormBase):
     """Available generation fleet subsets"""
 
     COLUMNS = {
-        "Entity ID": ("OWNER_ID",_int),
-        "Entity Name": ("OWNER_NAME",str),
-        "Plant ID": ("ID",_int),
-        "Plant Name": ("NAME",str),
-        "Plant State": ("STATE",str),
-        "County": ("COUNTY",str),
-        "Balancing Authority Code": ("BA_CODE",str),
-        "Sector": ("SECTOR",str),
-        "Generator ID": ("GENERATOR_ID",str),
-        "Unit Code": ("UNIT_CODE",str),
-        "Nameplate Capacity (MW)": ("NAMEPLATE_MW",_float),
-        "Net Summer Capacity (MW)": ("SUMMER_MW",_float),
-        "Net Winter Capacity (MW)": ("WINTER_MW",_float),
-        "Technology": ("TECHNOLOGY",str),
-        "Energy Source Code": ("ENERGY_SOURCE_CODE",str),
-        "Prime Mover Code": ("PRIME_MOVER_CODE",str),
-        "Operating Month": ("OPERATING_MONTH",_int),
-        "Operating Year": ("OPERATING_YEAR",_int),
-        "Planned Retirement Month": ("PLANNED_RETIREMENT_MONTH",_int),
-        "Planned Retirement Year": ("PLANNED_RETIREMENT_YEAR",_int),
-        "Status": ("STATUS",str),
-        "Nameplate Energy Capacity (MWh)": ("NAMEPLATE_MWH",_float),
-        "DC Net Capacity (MW)": ("DC_NET_MW",_float),
-        "Planned Derate Year": ("PLANNED_DERATE_YEAR",_int),
-        "Planned Derate Month": ("PLANNED_DERATE_MONTH",_int),
-        "Planned Derate of Summer Capacity (MW)": ("DERATE_SUMMER_MW",_float),
-        "Planned Uprate Year": ("PLANNED_UPRATE_YEAR",_int),
-        "Planned Uprate Month": ("PLANNED_UPRATE_MONTH",_int),
-        "Planned Uprate of Summer Capacity (MW)": ("UPRATE_SUMMER_MW",_float),
-        "Latitude": ("LAT",_float),
-        "Longitude": ("LON",_float)
+        "Entity ID": ("owner",_int),
+        "Entity Name": ("owner_name",str),
+        "Plant ID": ("plant",_int),
+        "Plant Name": ("plant_name",str),
+        "Plant State": ("state",str),
+        "County": ("county",str),
+        "Balancing Authority Code": ("ba",str),
+        "Sector": ("sector",str),
+        "Generator ID": ("generator",str),
+        "Unit Code": ("unit",str),
+        "Nameplate Capacity (MW)": ("nameplate_mw",_float),
+        "Net Summer Capacity (MW)": ("summer_mw",_float),
+        "Net Winter Capacity (MW)": ("winter_mw",_float),
+        "Technology": ("technology",str),
+        "Energy Source Code": ("fuel",str),
+        "Prime Mover Code": ("pm",str),
+        "Operating Month": ("operating_month",_int),
+        "Operating Year": ("operating_year",_int),
+        "Planned Retirement Month": ("planned_retirement_month",_int),
+        "Planned Retirement Year": ("planned_retirement_year",_int),
+        "Status": ("status",str),
+        "Nameplate Energy Capacity (MWh)": ("nameplate_mwh",_float),
+        "DC Net Capacity (MW)": ("dc_net_mw",_float),
+        "Planned Derate Year": ("planned_derate_year",_int),
+        "Planned Derate Month": ("planned_derate_month",_int),
+        "Planned Derate of Summer Capacity (MW)": ("planned_derate_summer_mw",_float),
+        "Planned Uprate Year": ("planned_uprate_year",_int),
+        "Planned Uprate Month": ("planned_uprate_month",_int),
+        "Planned Uprate of Summer Capacity (MW)": ("planned_uprate_summer_mw",_float),
+        "Latitude": ("latitude",_float),
+        "Longitude": ("longitude",_float)
     }
     """Table mapping EIA data columns to `eia.form860m.Form860m` data frame columns"""
+
+    INDEX = ["timestamp","plant","generator"]
+    """Index levels of the data frame"""
 
     def __init__(self,
         # pylint: disable=too-many-arguments,too-many-positional-arguments
         # pylint: disable=too-many-locals,too-many-branches
         year:int|str,
         month:int|str,
-        subset:str=None,
-        refresh:bool=None,
-        raw:bool=None,
+        *,
+        subset:str|None=None,
+        raw:bool=False,
+        refresh:bool=False,
         ):
         """Construct EIA Form 860m data frame
 
@@ -148,11 +160,12 @@ class Form860m(FormBase):
           - `month`: specifies the month (1 to 12, or a name or abbreviation
             such as `"August"` or `"Aug"`)
 
-          - `subset`: data subset requested
+          - `subset`: fleet subset, one of `SUBSETS` (default
+            `"Operating"`)
+
+          - `raw`: return the EIA worksheet unchanged (default `False`)
 
           - `refresh`: refresh data cache (default `False`)
-
-          - `raw`: return raw data (default `False`)
 
         Raises
         ------
@@ -226,8 +239,10 @@ class Form860m(FormBase):
             for value in self.COLUMNS.values():
                 data[value[0]] = [value[1](x) for x in data[value[0]]] \
                     if value[0] in data.columns else value[1]("")
+            data.insert(0,"timestamp",month_start(year,month))
+            data = data.set_index(self.INDEX).sort_index()
 
-        super().__init__(data.sort_index())
+        super().__init__(data)
 
 
 if __name__ == '__main__':
