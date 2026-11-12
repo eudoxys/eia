@@ -282,7 +282,10 @@ cache file.
 - API pagination uses `PAGE_LENGTH = 5000` and stops when `offset >= total`.
 - The API key is read from `EIA_API_KEY`, then
   `os.path.expanduser("~/.eia/api_key")` (works on Windows; #14). It is
-  never logged or included in exception text.
+  never logged or included in exception text. *Done (#16):* a missing or
+  empty key raises `RuntimeError` naming `EIA_API_KEY`, the key file path,
+  and the registration URL; `download()` redacts `api_key` from every
+  `requests` error, not only connection errors and timeouts.
 - Constructing a form must not require network access when the requested data
   is already cached. *Done:* the Form 930 reference workbook is read from
   the disk cache; the network is used only when it is missing, `refresh`

@@ -251,6 +251,11 @@ def download(url:str,params=None,*,missing_ok:bool=False,
                     f"after {attempt+1} attempt(s), {timeout=}s: {detail})")
                 # don't chain an exception whose text includes an API key
                 raise error from (None if detail != str(err) else err)
+        except requests.RequestException as err:
+            detail = _redact(str(err))
+            error = RuntimeError(f"'{url}' not available ({type(err).__name__}: {detail})")
+            # don't chain an exception whose text includes an API key
+            raise error from (None if detail != str(err) else err)
         else:
             if req.status_code == 200:
                 return req

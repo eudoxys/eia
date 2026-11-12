@@ -754,6 +754,17 @@ def test_download():
             else:
                 raise AssertionError("connection error did not raise RuntimeError")
 
+        # other requests errors are not retried and keys are removed too
+        fake,calls = responses(requests.exceptions.InvalidURL("https://x/?api_key=SECRET&a=1"))
+        with mock.patch("eia.base.requests.get",side_effect=fake):
+            try:
+                eia.base.download("u")
+            except RuntimeError as err:
+                assert "SECRET" not in str(err) and err.__cause__ is None, f"API key leaked: {err}"
+            else:
+                raise AssertionError("invalid URL did not raise RuntimeError")
+        assert len(calls) == 1, "invalid URL was retried"
+
         # options and environment
         with mock.patch.dict(os.environ,{eia.base.TIMEOUT_ENV:"12",eia.base.RETRIES_ENV:"bad"}):
             eia.base._download_options.update(timeout=None,retries=None)
@@ -775,6 +786,59 @@ def test_download():
         print("download ok.",file=sys.stderr,flush=True)
     finally:
         eia.base._download_options.update(timeout=None,retries=None,backoff=saved["backoff"])
+    return errors
+
+def test_api_key():
+    """Test API key lookup (offline)"""
+    import tempfile
+    from unittest import mock
+    errors = 0
+    try:
+        with tempfile.TemporaryDirectory() as home:
+            env = {x:y for x,y in os.environ.items() if x not in ["EIA_API_KEY","HOME"]}
+            def expanduser(path):
+                return path.replace("~",home,1) if path.startswith("~") else path
+            with mock.patch.dict(os.environ,env,clear=True), \
+                    mock.patch("eia.form930.os.path.expanduser",side_effect=expanduser):
+
+                # no HOME, no key: clear error, not KeyError/FileNotFoundError
+                try:
+                    eia.form930._api_key()
+                except RuntimeError as err:
+                    for text in ["EIA_API_KEY",os.path.join(home,".eia","api_key"),"register.php"]:
+                        assert text in str(err), f"{text!r} missing from error: {err}"
+                    assert err.__cause__ is None and err.__context__ is None, "error is chained"
+                else:
+                    raise AssertionError("missing key did not raise RuntimeError")
+
+                # key file
+                os.makedirs(os.path.join(home,".eia"))
+                path = os.path.join(home,".eia","api_key")
+                with open(path,"w",encoding="utf-8") as fh:
+                    fh.write("  FILEKEY\n")
+                assert eia.form930._api_key() == "FILEKEY", "key file not read"
+
+                # environment takes precedence; empty value is ignored
+                with mock.patch.dict(os.environ,{"EIA_API_KEY":" ENVKEY "}):
+                    assert eia.form930._api_key() == "ENVKEY", "environment key not used"
+                with mock.patch.dict(os.environ,{"EIA_API_KEY":""}):
+                    assert eia.form930._api_key() == "FILEKEY", "empty environment key used"
+
+                # empty key file
+                with open(path,"w",encoding="utf-8") as fh:
+                    fh.write("\n")
+                try:
+                    eia.form930._api_key()
+                except RuntimeError:
+                    pass
+                else:
+                    raise AssertionError("empty key file did not raise RuntimeError")
+    except Exception as err:
+        print(f"ERROR [eia.tests]: api_key --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("api_key ok.",file=sys.stderr,flush=True)
     return errors
 
 def test_published():
@@ -901,7 +965,9 @@ def test_form923():
 
 def test_form930():
     """Test Form 930 data frames (requires an EIA API key)"""
-    if "EIA_API_KEY" not in os.environ and not os.path.exists(os.path.join(os.environ["HOME"],".eia","api_key")):
+    try:
+        eia.form930._api_key()
+    except RuntimeError:
         print("Form930 skipped (no EIA API key)",file=sys.stderr,flush=True)
         return 0
     errors = 0
