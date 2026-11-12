@@ -55,6 +55,115 @@ def test_cli_forms():
         cli._FORMS["bulk_generation"] = saved
     return errors
 
+def test_cli_output():
+    """Test CLI output formats, errors, and argument handling without accessing EIA data"""
+    # pylint: disable=too-many-locals,too-many-statements
+    import io
+    import gzip
+    import zipfile
+    import tempfile
+    import pandas as pd
+    errors = 0
+    saved = cli._FORMS["bulk_generation"]
+    class Stub(Form860m):
+        """Small data frame standing in for Form860m"""
+        # pylint: disable=super-init-not-called,unused-argument
+        def __init__(self,**kwargs):
+            pd.DataFrame.__init__(self,{"PLANT":[1,2],"MW":[10.0,20.0]})
+    Stub.__init__.__annotations__.update(Form860m.__init__.__annotations__)
+    Stub.__name__ = "Form860m"
+    def run(*argv):
+        """Run bulk_generation and return (code,stdout,stderr)"""
+        out,err = io.StringIO(),io.StringIO()
+        stdout,stderr = sys.stdout,sys.stderr
+        sys.stdout,sys.stderr = out,err
+        try:
+            code = cli.main("bulk_generation","-y","2020","-m","8",*argv)
+        finally:
+            sys.stdout,sys.stderr = stdout,stderr
+        return code,out.getvalue(),err.getvalue()
+    expected = ",PLANT,MW\n0,1,10.0\n1,2,20.0\n"
+    try:
+        cli._FORMS["bulk_generation"] = Stub
+        argv = list(sys.argv)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = lambda name: os.path.join(tmp,name)
+
+            # format inferred from extension
+            for name in ["a.csv","a.csv.gz","a.csv.zip","a.xlsx"]:
+                code,_,err = run("-o",path(name))
+                assert code == cli.E_OK, f"-o {name} returned {code=}: {err}"
+            assert pd.read_csv(path("a.csv"),index_col=0).MW.sum() == 30, "a.csv invalid"
+            with gzip.open(path("a.csv.gz"),"rt") as fh:
+                assert "20.0" in fh.read(), "a.csv.gz invalid"
+            assert zipfile.is_zipfile(path("a.csv.zip")), "a.csv.zip is not a zip file"
+            sheets = pd.read_excel(path("a.xlsx"),sheet_name=None)
+            assert list(sheets) == ["Form860m"], f"a.xlsx has sheets {list(sheets)}"
+
+            # --format takes precedence over extension
+            code,_,err = run("-o",path("b.csv"),"-f","gzip")
+            assert code == cli.E_OK, f"-o b.csv -f gzip returned {code=}: {err}"
+            with gzip.open(path("b.csv"),"rt") as fh:
+                assert "20.0" in fh.read(), "-o b.csv -f gzip did not write gzip"
+            code,_,err = run("-o",path("b.dat"),"-f","csv")
+            assert code == cli.E_OK, f"-o b.dat -f csv returned {code=}: {err}"
+            assert pd.read_csv(path("b.dat"),index_col=0).MW.sum() == 30, "-o b.dat -f csv invalid"
+
+            # unknown extension without --format
+            code,out,err = run("-o",path("c.dat"))
+            assert code == cli.E_FAILED, f"-o c.dat returned {code=}"
+            assert not os.path.exists(path("c.dat")), "-o c.dat wrote a file"
+            assert "None" not in err and "c.dat" in err and "--format" in err, \
+                f"-o c.dat reported {err=}"
+            assert out == "", f"error written to stdout {out=}"
+
+        # --format without --output
+        code,out,err = run("-f","csv")
+        assert code == cli.E_OK, f"-f csv returned {code=}: {err}"
+        assert out.replace("\r","") == expected, f"-f csv wrote {out=}"
+        for fmt in ["gzip","zip","xlsx"]:
+            code,out,err = run("-f",fmt)
+            assert code == cli.E_FAILED, f"-f {fmt} without --output returned {code=}"
+            assert "--output" in err and out == "", f"-f {fmt} reported {out=} {err=}"
+
+        # errors go to stderr; --debug raises; sys.argv is not changed
+        class Fail(Stub):
+            """Raise on construction"""
+            def __init__(self,**kwargs):
+                raise RuntimeError("stub failure")
+        Fail.__init__.__annotations__.update(Form860m.__init__.__annotations__)
+        cli._FORMS["bulk_generation"] = Fail
+        code,out,err = run()
+        assert code == cli.E_FAILED, f"failure returned {code=}"
+        assert "stub failure" in err and out == "", f"failure reported {out=} {err=}"
+        try:
+            run("--debug")
+            raise AssertionError("--debug did not raise")
+        except RuntimeError:
+            pass
+        assert sys.argv == argv, f"cli.main changed {sys.argv=}"
+
+        # exception before parsing finishes does not raise AttributeError
+        def broken(*args,**kwargs):
+            raise RuntimeError("parser failure")
+        parse_args = cli.argparse.ArgumentParser.parse_args
+        cli.argparse.ArgumentParser.parse_args = broken
+        try:
+            code,out,err = run()
+        finally:
+            cli.argparse.ArgumentParser.parse_args = parse_args
+        assert code == cli.E_FAILED and "parser failure" in err, \
+            f"early failure returned {code=} {err=}"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: cli output --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("cli output ok.",file=sys.stderr,flush=True)
+    finally:
+        cli._FORMS["bulk_generation"] = saved
+    return errors
+
 def test_makeargs():
     """Test every form accepts command line options through makeargs"""
     errors = 0
