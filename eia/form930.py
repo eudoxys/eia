@@ -50,6 +50,7 @@ import pandas as pd
 import requests
 
 from cache import Cache
+from eia.base import FormBase
 
 def _api_key() -> str:
     """@private Get the EIA API key"""
@@ -70,7 +71,7 @@ def _hours(year:int,month:int) -> pd.DatetimeIndex:
     start = pd.Timestamp(year=year,month=month,day=1,tz="UTC")
     return pd.date_range(start,start+pd.DateOffset(months=1),freq="h",inclusive="left",name="timestamp")
 
-class _Form930Base(pd.DataFrame):
+class _Form930Base(FormBase):
     """@private Common Form 930 API access"""
 
     API_URL = "https://api.eia.gov/v2/electricity/rto/{route}/data/"
@@ -253,6 +254,7 @@ class Form930(_Form930Base):
 
           - `refresh`: force cache refresh
         """
+        assert isinstance(region,str), "region is required (`--region` on the command line)"
         assert region in self.respondents(), f"{region=} is not valid"
         assert isinstance(year,int) and self.FIRST_MONTH[0] <= year <= dt.datetime.now().year, \
             f"{year=} is invalid"

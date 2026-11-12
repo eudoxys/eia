@@ -8,6 +8,7 @@ from eia.form930 import Form930, Form930Fuel
 from eia.form861m import Form861m
 from eia.hs861m import HS861m
 from eia import cli
+from eia.base import month_number
 
 def test_cli_forms():
     """Test CLI subcommands map to the correct form class"""
@@ -50,6 +51,82 @@ def test_cli_forms():
         print("cli ok.",file=sys.stderr,flush=True)
     finally:
         cli._FORMS["bulk_generation"] = saved
+    return errors
+
+def test_makeargs():
+    """Test every form accepts command line options through makeargs"""
+    errors = 0
+    options = {"form":"region_hourly","year":"2020","month":"8","region":"CAL",
+        "subset":None,"refresh":False,"raw":False,"output":None}
+    try:
+        for form in [Form860m,Form861m,HS861m,Form923,Form930,Form930Fuel]:
+            assert hasattr(form,"makeargs"), f"{form.__name__} has no makeargs"
+        args = Form930.makeargs(**options)
+        assert args == {"region":"CAL","year":2020,"month":8,"refresh":False}, f"Form930 got {args=}"
+        args = HS861m.makeargs(**options)
+        assert args == {"year":2020,"month":8,"refresh":False,"raw":False}, f"HS861m got {args=}"
+        args = Form860m.makeargs(**options)
+        assert args["year"] == 2020 and args["month"] == 8, f"Form860m got {args=}"
+        assert Form930.makeargs(month=None)["month"] is None, "month=None was not kept"
+        for text,number in [("August",8),("aug",8),("Sept",9),("sep.",9),("MAY",5),("12",12)]:
+            assert month_number(text) == number, f"month_number({text!r}) is not {number}"
+            assert Form930.makeargs(month=text)["month"] == number, f"makeargs(month={text!r}) is not {number}"
+        for text in ["ju","jux","13","0",""]:
+            try:
+                month_number(text)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"month_number({text!r}) was accepted")
+        try:
+            Form930.makeargs(year="last")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("year='last' was accepted")
+    except Exception as err:
+        print(f"ERROR [eia.tests]: makeargs --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("makeargs ok.",file=sys.stderr,flush=True)
+    return errors
+
+def test_cli_region_hourly():
+    """Test region_hourly passes region, year, and month to Form930 without accessing EIA data"""
+    errors = 0
+    saved = cli._FORMS["region_hourly"]
+    called = {}
+    class Stub(Form930):
+        """Record constructor arguments"""
+        # pylint: disable=super-init-not-called
+        def __init__(self,region,year,month=None,*,refresh=False):
+            called.update(region=region,year=year,month=month,refresh=refresh)
+        def __str__(self):
+            return ""
+    Stub.__init__.__annotations__.update(Form930.__init__.__annotations__)
+    try:
+        cli._FORMS["region_hourly"] = Stub
+        with open(os.devnull,"w",encoding="utf-8") as null:
+            stdout,sys.stdout = sys.stdout,null
+            try:
+                codes = [
+                    cli.main("region_hourly","--region","CAL","-y","2020","-m","8"),
+                    cli.main("region_hourly","--respondent","CAL","-y","2020","-m","Aug"),
+                    ]
+            finally:
+                sys.stdout = stdout
+        assert codes == [cli.E_OK]*2, f"eia region_hourly returned {codes=}"
+        assert called == {"region":"CAL","year":2020,"month":8,"refresh":False}, \
+            f"eia region_hourly passed {called=}"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: cli region_hourly --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("cli region_hourly ok.",file=sys.stderr,flush=True)
+    finally:
+        cli._FORMS["region_hourly"] = saved
     return errors
 
 def test_form860m():

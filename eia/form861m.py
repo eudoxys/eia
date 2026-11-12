@@ -18,10 +18,11 @@ import pytz
 import warnings
 import pandas as pd
 import requests
+from eia.base import FormBase, month_number
 
 _cache = {}
 
-class Form861m(pd.DataFrame):
+class Form861m(FormBase):
     """The `Form861m` class is a Pandas data frame loaded with the EIA Form 861
     distributed/small scale solar data for US states starting in 2017.
 
@@ -68,7 +69,8 @@ class Form861m(pd.DataFrame):
 
           - `year`: specifies the year (2017 to present)
 
-          - `month`: specifies the month (1 to 12)
+          - `month`: specifies the month (1 to 12, or a name or abbreviation
+            such as `"August"` or `"Aug"`)
 
           - `refresh`: refresh data cache (default `False`)
 
@@ -83,7 +85,7 @@ class Form861m(pd.DataFrame):
         assert 2017 <= year <= dt.datetime.now().year, f"{year=} is not valid"
 
         if isinstance(month,str):
-            month = int(month)
+            month = month_number(month)
         assert isinstance(month,int), f"{type(month)=} is not valid"
         assert 1 <= month <= 12, f"{month=} is not valid"
 
@@ -159,10 +161,6 @@ class Form861m(pd.DataFrame):
             data.year = data.year.astype(int)
         super().__init__(data.sort_index().reset_index())
 
-    @classmethod
-    def makeargs(cls,**kwargs):
-        """@private Return dict of accepted kwargs by this class constructor"""
-        return {x:y for x,y in kwargs.items() if x in cls.__init__.__annotations__}
 
 if __name__ == '__main__':
 

@@ -5,11 +5,11 @@ The `eia` package downloads and structures EIA form data for bulk power systems.
 Syntax
 ------
     
-    eia [-y YEAR] [-m MONTH] [--subset SUBSET] 
+    eia [-y YEAR] [-m MONTH] [-r|--region REGION] [--subset SUBSET] 
         [-o|--output OUTPUT] [--raw] [--refresh] 
         [-h|--help] [--warning] [--debug] 
         [-f|--format {csv,gzip,zip,xlsx}]
-        {bulk_generation,customer_demand,distributed_generation,help}
+        {bulk_generation,customer_demand,distributed_generation,region_hourly,help}
 
 Positional arguments
 --------------------
@@ -19,6 +19,9 @@ Positional arguments
 - `customer_demand`: EIA Form 861m customer consumption data
 
 - `distributed_generation`: EIA Form 861m non-bulk generation data
+
+- `region_hourly`: EIA Form 930 hourly load, net generation, and interchange
+  by balancing authority or region (requires `--region`)
 
 - `help`: get online help
 
@@ -35,7 +38,11 @@ Optional arguments
 
 - `-y YEAR`, `--year YEAR`: select year
 
-- `-m MONTH`, `--month MONTH`: select month
+- `-m MONTH`, `--month MONTH`: select month (number, name, or abbreviation,
+  e.g., `8`, `August`, or `aug`)
+
+- `-r REGION`, `--region REGION`, `--respondent REGION`: select region or
+  balancing authority (`region_hourly` only; see `eia.Form930.respondents()`)
 
 - `--subset SUBSET`: data subset requested
 
@@ -65,8 +72,8 @@ Currently supported forms are
 - `eia.form930.Form930Fuel`: Hourly net generation by energy source by
   balancing authority or region (UTC, hour-beginning; July 2018 onward)
 
-Form 923 and Form 930 data are currently available from Python only; the
-command line tool does not yet support them.
+Form 923 data and Form 930 data by energy source are currently available from
+Python only; the command line tool does not yet support them.
 
 Form 930 data are obtained from the EIA Open Data API, which requires an API
 key. Register at https://www.eia.gov/opendata/register.php, then store the key
@@ -101,6 +108,11 @@ Outputs
     48 2020-08-01 00:00:00+00:00    WI    41.373    39.805    13.853     95.031     6365.008    6313.855    2171.008    14849.871
     49 2020-08-01 00:00:00+00:00    WV     6.987     3.127     0.058     10.172     1071.614     486.645       9.013     1567.273
     50 2020-08-01 00:00:00+00:00    WY     6.272     1.393     0.276      7.941     1080.503     248.006      49.268     1377.776
+
+Get the hourly load, net generation, and interchange for California in August
+2020 (Form 930)
+
+    eia region_hourly --region CAL --year 2020 --month 8
 
 Python
 ------

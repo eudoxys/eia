@@ -17,6 +17,7 @@ import warnings
 import zipfile
 import pandas as pd
 import requests
+from eia.base import FormBase, month_number
 
 def _int(s,default=0):
     try:
@@ -31,7 +32,7 @@ def _float(s,default=float('nan')):
     except ValueError:
         return default
 
-class Form860m(pd.DataFrame):
+class Form860m(FormBase):
     """The `Form860m` class is a Pandas data frame loaded with the EIA Form 860m
     monthly archive of electric generator inventory.
 
@@ -111,7 +112,8 @@ class Form860m(pd.DataFrame):
 
           - `year`: specifies the year (2015 to present)
 
-          - `month`: specifies the month (1 to 12)
+          - `month`: specifies the month (1 to 12, or a name or abbreviation
+            such as `"August"` or `"Aug"`)
 
           - `subset`: data subset requested
 
@@ -127,7 +129,7 @@ class Form860m(pd.DataFrame):
         assert 2015 <= year <= dt.datetime.now().year, f"{year=} is not valid"
 
         if isinstance(month,str):
-            month = int(month)
+            month = month_number(month)
         assert isinstance(month,int), "month must be an integer"
         assert 1 <= month <= 12, f"{month=} is not valid"
 
@@ -204,11 +206,6 @@ class Form860m(pd.DataFrame):
 
         super().__init__(data.sort_index())
 
-    @classmethod
-    def makeargs(cls,**kwargs):
-        """@private Return dict of accepted kwargs by this class constructor"""
-        return {x:y for x,y in kwargs.items()
-            if x in cls.__init__.__annotations__}
 
 if __name__ == '__main__':
     pd.options.display.width = None
