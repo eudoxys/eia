@@ -17,7 +17,9 @@ def test_cli_forms():
         "bulk_generation": Form860m,
         "customer_demand": HS861m,
         "distributed_generation": Form861m,
+        "generation_monthly": Form923,
         "region_hourly": Form930,
+        "region_fuel_hourly": Form930Fuel,
     }
     saved = cli._FORMS["bulk_generation"]
     try:
@@ -68,6 +70,17 @@ def test_makeargs():
         args = Form860m.makeargs(**options)
         assert args["year"] == 2020 and args["month"] == 8, f"Form860m got {args=}"
         assert Form930.makeargs(month=None)["month"] is None, "month=None was not kept"
+        args = Form923.makeargs(year="2020",states="CA, NV",bas="CISO",fuels="NG,WAT",
+            plants="1,2",by=None,increments=False)
+        assert args == {"year":2020,"states":["CA","NV"],"bas":["CISO"],"fuels":["NG","WAT"],
+            "plants":[1,2],"increments":False}, f"Form923 got {args=}"
+        assert Form923.makeargs(states=None)["states"] is None, "states=None was not kept"
+        try:
+            Form923.makeargs(plants="1,x")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("plants='1,x' was accepted")
         for text,number in [("August",8),("aug",8),("Sept",9),("sep.",9),("MAY",5),("12",12)]:
             assert month_number(text) == number, f"month_number({text!r}) is not {number}"
             assert Form930.makeargs(month=text)["month"] == number, f"makeargs(month={text!r}) is not {number}"
@@ -127,6 +140,85 @@ def test_cli_region_hourly():
         print("cli region_hourly ok.",file=sys.stderr,flush=True)
     finally:
         cli._FORMS["region_hourly"] = saved
+    return errors
+
+def _run_cli(command,stub,*argv) -> list[int]:
+    """@private Run CLI command lines with a stub form class and stdout discarded"""
+    saved = cli._FORMS[command]
+    try:
+        cli._FORMS[command] = stub
+        with open(os.devnull,"w",encoding="utf-8") as null:
+            stdout,sys.stdout = sys.stdout,null
+            try:
+                return [cli.main(command,*x) for x in argv]
+            finally:
+                sys.stdout = stdout
+    finally:
+        cli._FORMS[command] = saved
+
+def test_cli_generation_monthly():
+    """Test generation_monthly passes filters to Form923 without accessing EIA data"""
+    errors = 0
+    called = []
+    class Stub(Form923):
+        """Record constructor arguments"""
+        # pylint: disable=super-init-not-called,unused-argument
+        def __init__(self,year,month=None,states=None,bas=None,fuels=None,*,
+                by="ba",plants=None,increments=True,precision=3,refresh=False,nonzero=True):
+            called.append(dict(year=year,month=month,states=states,bas=bas,fuels=fuels,
+                by=by,plants=plants,increments=increments,refresh=refresh))
+        def __str__(self):
+            return ""
+    Stub.__init__.__annotations__.update(Form923.__init__.__annotations__)
+    try:
+        codes = _run_cli("generation_monthly",Stub,
+            ["-y","2020","-m","8","--ba","CISO","--fuels","NG,WAT"],
+            ["-y","2020","--state","CA","--fuel","WAT","--by","plant","--plants","6099,286",
+                "--no-increments"],
+            )
+        assert codes == [cli.E_OK]*2, f"eia generation_monthly returned {codes=}"
+        assert called[0] == {"year":2020,"month":8,"states":None,"bas":["CISO"],"fuels":["NG","WAT"],
+            "by":"ba","plants":None,"increments":True,"refresh":False}, \
+            f"eia generation_monthly passed {called[0]=}"
+        assert called[1] == {"year":2020,"month":None,"states":["CA"],"bas":None,"fuels":["WAT"],
+            "by":"plant","plants":[6099,286],"increments":False,"refresh":False}, \
+            f"eia generation_monthly passed {called[1]=}"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: cli generation_monthly --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("cli generation_monthly ok.",file=sys.stderr,flush=True)
+    return errors
+
+def test_cli_region_fuel_hourly():
+    """Test region_fuel_hourly passes respondent and fuels to Form930Fuel without accessing EIA data"""
+    errors = 0
+    called = []
+    class Stub(Form930Fuel):
+        """Record constructor arguments"""
+        # pylint: disable=super-init-not-called
+        def __init__(self,respondent,year,month=None,*,fuels=None,refresh=False):
+            called.append(dict(respondent=respondent,year=year,month=month,fuels=fuels,refresh=refresh))
+        def __str__(self):
+            return ""
+    Stub.__init__.__annotations__.update(Form930Fuel.__init__.__annotations__)
+    try:
+        codes = _run_cli("region_fuel_hourly",Stub,
+            ["--region","BPAT","-y","2020","-m","8"],
+            ["--respondent","BPAT","-y","2020","-m","aug","--fuels","WAT,WND","--refresh"],
+            )
+        assert codes == [cli.E_OK]*2, f"eia region_fuel_hourly returned {codes=}"
+        assert called == [
+            {"respondent":"BPAT","year":2020,"month":8,"fuels":None,"refresh":False},
+            {"respondent":"BPAT","year":2020,"month":8,"fuels":["WAT","WND"],"refresh":True},
+            ], f"eia region_fuel_hourly passed {called=}"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: cli region_fuel_hourly --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("cli region_fuel_hourly ok.",file=sys.stderr,flush=True)
     return errors
 
 def test_form860m():

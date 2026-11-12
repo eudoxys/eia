@@ -204,8 +204,9 @@ breaks callers.
 maps to a class via `_FORMS`, and a shared option set filtered per class by
 `makeargs`. Known defects: wrong class for `bulk_generation` (#3),
 `region_hourly` unusable (#4), `customer_demand` type errors (#5), and the
-output-path issues listed in #10. `Form923` and `Form930Fuel` have no
-subcommand (#9).
+output-path issues listed in #10. `Form923` and `Form930Fuel` are exposed as
+`generation_monthly` and `region_fuel_hourly`, with their filters as shared
+comma-separated options (#9).
 
 **Target.**
 
