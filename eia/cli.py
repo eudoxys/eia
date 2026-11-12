@@ -68,6 +68,9 @@ def main(*args:list[str]) -> int:
             help="select year")
         parser.add_argument("-m","--month",
             help="select month")
+        parser.add_argument("-r","--region","--respondent",
+            dest="region",
+            help="select region or balancing authority (region_hourly)")
         parser.add_argument("--subset",
             help="data subset requested")
         parser.add_argument("--warning",

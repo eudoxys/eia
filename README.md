@@ -29,6 +29,11 @@ See https://www.eudoxys.com/eia
 
     eia distributed_generation --year 2020 --month 8
 
+Hourly load, net generation, and interchange for California in August 2020
+(Form 930)
+
+    eia region_hourly --region CAL --year 2020 --month 8
+
 ### Python code
 
     from eia import Form861m
@@ -58,8 +63,8 @@ in August 2020 (Form 930)
     from eia import Form930Fuel
     Form930Fuel("BPAT",2020,8)
 
-Form 923 and Form 930 data are currently available from Python only; the
-command line tool does not yet support them.
+Form 923 data and Form 930 data by energy source are currently available from
+Python only; the command line tool does not yet support them.
 
 ## Notes
 

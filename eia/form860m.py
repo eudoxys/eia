@@ -17,6 +17,7 @@ import warnings
 import zipfile
 import pandas as pd
 import requests
+from eia.base import FormBase
 
 def _int(s,default=0):
     try:
@@ -31,7 +32,7 @@ def _float(s,default=float('nan')):
     except ValueError:
         return default
 
-class Form860m(pd.DataFrame):
+class Form860m(FormBase):
     """The `Form860m` class is a Pandas data frame loaded with the EIA Form 860m
     monthly archive of electric generator inventory.
 
@@ -204,11 +205,6 @@ class Form860m(pd.DataFrame):
 
         super().__init__(data.sort_index())
 
-    @classmethod
-    def makeargs(cls,**kwargs):
-        """@private Return dict of accepted kwargs by this class constructor"""
-        return {x:y for x,y in kwargs.items()
-            if x in cls.__init__.__annotations__}
 
 if __name__ == '__main__':
     pd.options.display.width = None

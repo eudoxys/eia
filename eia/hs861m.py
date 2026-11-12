@@ -11,12 +11,13 @@ References
 
 import pandas as pd
 from cache import Cache
+from eia.base import FormBase
 
 refresh=False
 
 _cache = None
 
-class HS861m(pd.DataFrame):
+class HS861m(FormBase):
     """Form 861m customer data frame"""
 
     CACHEDIR = None
@@ -145,10 +146,6 @@ class HS861m(pd.DataFrame):
         else:
             super().__init__(data)
 
-    @classmethod
-    def makeargs(cls,**kwargs):
-        """@private Return dict of accepted kwargs by this class constructor"""
-        return {x:y for x,y in kwargs.items() if x in cls.__init__.__annotations__}
 
 if __name__ == "__main__":
 

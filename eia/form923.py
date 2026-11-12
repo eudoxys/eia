@@ -51,8 +51,9 @@ import requests
 import pandas as pd
 
 from cache import Cache
+from eia.base import FormBase
 
-class Form923(pd.DataFrame):
+class Form923(FormBase):
     """Form923 DataFrame
 
     Index
