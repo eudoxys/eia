@@ -12,6 +12,19 @@ from eia.base import month_number
 import eia.base
 import eia.form930
 
+def test_version():
+    """Test package version matches the installed package metadata"""
+    import importlib.metadata # pylint: disable=import-outside-toplevel
+    errors = 0
+    try:
+        assert eia.__version__ == importlib.metadata.version("eia"), f"{eia.__version__=} does not match package metadata"
+    except AssertionError as err:
+        print(f"ERROR [eia.tests]: version --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+    else:
+        print("version ok.",file=sys.stderr,flush=True)
+    return errors
+
 def test_cli_forms():
     """Test CLI subcommands map to the correct form class"""
     errors = 0

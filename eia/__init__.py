@@ -265,6 +265,14 @@ Package information
     - [platformdirs](https://pypi.org/project/platformdirs/)
     - [cache](https://github.com/eudoxys/cache)
 """
+from importlib.metadata import version as _version, PackageNotFoundError as _PackageNotFoundError
+
+try:
+    __version__ = _version("eia")
+    """Installed package version (from the package metadata)"""
+except _PackageNotFoundError: # running from a source tree that is not installed
+    __version__ = "0.0.0"
+
 from eia.cli import main
 from eia.form860m import Form860m
 from eia.form861m import Form861m
