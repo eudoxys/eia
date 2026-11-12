@@ -36,5 +36,7 @@ jobs:
         pytest
 
     - name: Run network tests
+      env:
+        EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
       run: |
         pytest -m network
