@@ -9,9 +9,11 @@ References
   - https://www.eia.gov/electricity/data/eia861m/
 """
 
+import datetime as dt
+import numpy as np
 import pandas as pd
 from cache import Cache
-from eia.base import FormBase
+from eia.base import FormBase, month_number
 
 refresh=False
 
@@ -71,8 +73,8 @@ class HS861m(FormBase):
 
     def __init__(
         self,
-        year:int,
-        month:int,
+        year:int|str|None=None,
+        month:int|str|None=None,
         refresh:bool=False,
         raw:bool=False,
         ):
@@ -81,24 +83,52 @@ class HS861m(FormBase):
         Arguments
         ---------
 
-          - `year`: specifies the year (2017 to present)
+          - `year`: specifies the year (as `int` or `str`); `None` selects
+            all years available (default `None`)
 
-          - `month`: specifies the month (1 to 12)
+          - `month`: specifies the month (1 to 12, or a name or abbreviation
+            such as `"Aug"`); `None` selects all months of the selected
+            year(s) (default `None`)
+
+            When both `year` and `month` are given the result is indexed by
+            `state` only; otherwise it is indexed by `date` and `state`.
 
           - `refresh`: refresh data cache (default `False`)
 
           - `raw`: disable data frame cleanup, i.e., don't set `NaN` values
             to 0.0, construct the `date` index, or remove the `status`
-            column (default `False`)
-        """  
+            column (default `False`); `year` and `month` are validated but
+            no selection is applied to raw data
+
+        Raises
+        ------
+
+          - `ValueError`: `year` or `month` is not valid, or no data is
+            available for the selection
+        """
+        if isinstance(year,str):
+            try:
+                year = int(year.strip())
+            except ValueError as err:
+                raise ValueError(f"{year=} is not a valid year") from err
+        if year is not None:
+            if not isinstance(year,int) or isinstance(year,bool) \
+                    or not 1990 <= year <= dt.datetime.now().year:
+                raise ValueError(f"{year=} is not a valid year")
+        if month is not None:
+            month = month_number(month)
 
         global _cache
-        if not _cache is None:
+        if _cache is not None and not refresh:
             data = _cache.copy()
-        else:    
+        else:
             if self.CACHEDIR:
-                cache.CACHEDIR = self.CACHEDIR      
-            cache = Cache(package="eia",version=0,path=["hs861m.csv"])
+                # use a cache folder for this class without changing the
+                # default folder of other `Cache` users
+                cache_class = type("HS861mCache",(Cache,),{"CACHEDIR":self.CACHEDIR})
+            else:
+                cache_class = Cache
+            cache = cache_class(package="eia",version=0,path=["hs861m.csv"])
             if cache.exists() and not refresh:
                 data = pd.read_csv(cache.pathname)
             else:
@@ -137,12 +167,20 @@ class HS861m(FormBase):
             data.fillna(0.0,inplace=True)
             data.sort_index(inplace=True)
 
-            if year is None:
-                super().__init__(data)
-            elif month is None:
-                super().__init__(data.loc[(f"{year}-{x+1:02d}-01 00:00:00+00:00" for x in range(12))])
-            else:
-                super().__init__(data.loc[f"{year}-{month:02d}-01 00:00:00+00:00"])
+            dates = data.index.get_level_values("date")
+            selected = np.ones(len(data),dtype=bool)
+            if year is not None:
+                selected &= dates.year == year
+            if month is not None:
+                selected &= dates.month == month
+            if year is not None or month is not None:
+                data = data[selected]
+                if len(data) == 0:
+                    raise ValueError(f"no data available for {year=}, {month=}")
+            if year is not None and month is not None:
+                # a single month is indexed by state only
+                data = data.droplevel("date")
+            super().__init__(data)
         else:
             super().__init__(data)
 

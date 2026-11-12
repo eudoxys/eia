@@ -180,6 +180,71 @@ def test_hs861m():
             print(f"HS861m({year=},{month=}) ok.",file=sys.stderr,flush=True)
     return errors
 
+def test_hs861m_args():
+    """Test HS 861m year/month coercion and selection without accessing EIA data"""
+    import pandas as pd
+    import eia.hs861m as hs861m
+    errors = 0
+    saved = hs861m._cache
+    rows = [{"year":y,"month":m,"state":s,"status":"Final","tot_energy_mwh":1.0}
+        for y in (2021,2022) for m in range(1,13) for s in ("CA","WA")]
+    hs861m._cache = pd.DataFrame(rows)
+    try:
+        data = HS861m("2022","8")
+        assert list(data.index.names) == ["state"] and len(data) == 2, f"year+month got {data.index.names=}, {len(data)=}"
+        assert HS861m(2022,"Aug").equals(data), "month name not accepted"
+        data = HS861m(2022)
+        assert len(data) == 24, f"year only got {len(data)=}"
+        assert set(data.index.get_level_values("date").year) == {2022}, "year filter not applied"
+        assert len(HS861m()) == 48, "year=None did not return all years"
+        assert len(HS861m(month=3)) == 4, "month only did not select that month in every year"
+        assert cli.main("customer_demand","-y","2022","-m","8") == cli.E_OK, "CLI failed"
+        for year,month in [("abc",1),(2022,13),(2022,"Foo"),(1800,1),(2019,1)]:
+            try:
+                HS861m(year,month)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"HS861m({year=},{month=}) did not raise ValueError")
+    except Exception as err:
+        print(f"ERROR [eia.tests]: HS861m arguments --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("HS861m arguments ok.",file=sys.stderr,flush=True)
+    finally:
+        hs861m._cache = saved
+    return errors
+
+def test_hs861m_cachedir():
+    """Test HS 861m honours CACHEDIR without accessing EIA data"""
+    import tempfile
+    import pandas as pd
+    import eia.hs861m as hs861m
+    from cache import Cache
+    errors = 0
+    saved = (hs861m._cache,HS861m.CACHEDIR,Cache.CACHEDIR)
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pathname = os.path.join(tmpdir,"eia","0","hs861m.csv")
+            os.makedirs(os.path.dirname(pathname))
+            pd.DataFrame([{"year":2022,"month":8,"state":"CA","status":"Final",
+                "tot_energy_mwh":1.0}]).to_csv(pathname,index=False)
+            hs861m._cache = None
+            HS861m.CACHEDIR = tmpdir
+            data = HS861m(2022,8)
+            assert len(data) == 1, f"cache file in CACHEDIR not used ({len(data)=})"
+            assert Cache.CACHEDIR == saved[2], "default Cache.CACHEDIR was changed"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: HS861m CACHEDIR --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("HS861m CACHEDIR ok.",file=sys.stderr,flush=True)
+    finally:
+        hs861m._cache,HS861m.CACHEDIR,Cache.CACHEDIR = saved
+    return errors
+
 def test_form923():
     """Test Form 923 data frame by BA and by plant"""
     errors = 0
