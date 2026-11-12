@@ -51,12 +51,41 @@ import pandas as pd
 from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, \
     check_published, latest_month, download
 
+API_KEY_ENV = "EIA_API_KEY"
+"""Environment variable holding the EIA Open Data API key"""
+
+API_KEY_FILE = os.path.join("~",".eia","api_key")
+"""File holding the EIA Open Data API key (used when `EIA_API_KEY` is not set)"""
+
+REGISTER_URL = "https://www.eia.gov/opendata/register.php"
+"""URL where an EIA Open Data API key can be obtained"""
+
 def _api_key() -> str:
-    """@private Get the EIA API key"""
-    if "EIA_API_KEY" in os.environ:
-        return os.environ["EIA_API_KEY"]
-    with open(os.path.join(os.environ["HOME"],".eia","api_key"),"r",encoding="utf-8") as fh:
-        return fh.read().strip()
+    """@private Get the EIA API key
+
+    The key is read from the `EIA_API_KEY` environment variable or, when that
+    is not set or empty, from the file `~/.eia/api_key`.
+
+    Raises
+    ------
+
+      - `RuntimeError`: no API key was found
+    """
+    key = os.environ.get(API_KEY_ENV,"").strip()
+    if key:
+        return key
+    path = os.path.expanduser(API_KEY_FILE)
+    try:
+        with open(path,"r",encoding="utf-8") as fh:
+            key = fh.read().strip()
+    except FileNotFoundError:
+        key = ""
+    except OSError as err:
+        raise RuntimeError(f"unable to read EIA API key file '{path}' ({type(err).__name__})") from None
+    if not key:
+        raise RuntimeError(f"no EIA API key found: set the environment variable {API_KEY_ENV} "
+            f"or save the key in '{path}' (register for a key at {REGISTER_URL})")
+    return key
 
 def _months(year:int,month:int|None) -> list[int]:
     """@private Get list of months to load
