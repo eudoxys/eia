@@ -17,7 +17,7 @@ pip install git+https://github.com/eudoxys/eia
 ```
 
 Python 3.11 or later. Dependencies: `pandas`, `openpyxl`, `requests`,
-`pytz`, and `cache` (https://github.com/eudoxys/cache).
+`platformdirs`, `pytz`, and `cache` (https://github.com/eudoxys/cache).
 
 ## Selecting a form
 
@@ -151,13 +151,12 @@ local time with `df.timestamp.dt.tz_convert("America/Los_Angeles")`.
 
 ## Caching
 
-- `Form860m` and `Form861m` cache downloaded workbooks in `eia/.cache`
-  inside the installed package (override with the class attribute
-  `CACHEDIR` before constructing).
-- `Form923`, `Form930`, `Form930Fuel` and `HS861m` use the `cache`
-  package, stored under `{cache package}/.cache/eia/{version}/...`. The
-  `cache` command (`cache size --package eia`, `cache clear --package eia`)
-  inspects or clears it.
+- All forms cache under `{cache_dir}/eia/{version}/...`, where `cache_dir`
+  is the folder set by `eia.set_cache_dir(path)`, else `$EIA_CACHE_DIR`,
+  else the platform user cache folder (`~/.cache/eudoxys` on Linux,
+  `~/Library/Caches/eudoxys` on macOS). Nothing is written inside the
+  installed package. `eia.cache_dir()` returns the folder and
+  `eia.clear_cache()` deletes all cached `eia` data.
 - Pass `refresh=True` to re-download a period, for example after EIA
   revises the most recent months.
 

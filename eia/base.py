@@ -3,11 +3,107 @@
 All form classes derive from `eia.base.FormBase`, which provides the
 `makeargs()` method the command line tool uses to map its options to the
 form constructor's arguments.
+
+Cache location
+--------------
+
+Downloaded data are cached under `{cache_dir}/eia/{version}/...`, where
+`cache_dir` is, in order of precedence,
+
+  1. the folder given to `eia.base.set_cache_dir()` (also available as
+     `eia.set_cache_dir()`),
+
+  2. the environment variable `EIA_CACHE_DIR`, or
+
+  3. the platform user cache folder for Eudoxys packages, e.g.,
+     `~/.cache/eudoxys` on Linux, `~/Library/Caches/eudoxys` on macOS, and
+     `%LOCALAPPDATA%\\eudoxys\\Cache` on Windows.
+
+The cache is never written inside the installed package. Use
+`eia.base.clear_cache()` to delete all cached `eia` data.
 """
+import os
+import shutil
 import inspect
 import types
 import typing
 import pandas as pd
+import platformdirs
+from cache import Cache
+
+CACHE_ENV = "EIA_CACHE_DIR"
+"""Environment variable that overrides the default cache folder"""
+
+CACHE_PACKAGE = "eia"
+"""@private Package name used for cache entries"""
+
+_cache_dir = None
+"""@private Cache folder set by `set_cache_dir()` (`None` uses the default)"""
+
+def cache_dir() -> str:
+    """Get the cache folder
+
+    Returns
+    -------
+
+      - `str`: the folder under which `eia/{version}/...` cache files are
+        stored (see the module documentation for how it is chosen)
+    """
+    if _cache_dir is not None:
+        return _cache_dir
+    path = os.environ.get(CACHE_ENV)
+    if path:
+        return os.path.abspath(os.path.expanduser(path))
+    return platformdirs.user_cache_dir("eudoxys",appauthor=False)
+
+def set_cache_dir(path:str|None) -> str:
+    """Set the cache folder
+
+    Arguments
+    ---------
+
+      - `path`: folder under which `eia/{version}/...` cache files are
+        stored; `None` restores the default (`EIA_CACHE_DIR` or the
+        platform user cache folder)
+
+    Returns
+    -------
+
+      - `str`: the previous cache folder
+    """
+    global _cache_dir # pylint: disable=global-statement
+    old = cache_dir()
+    _cache_dir = None if path is None else os.path.abspath(os.path.expanduser(str(path)))
+    return old
+
+def clear_cache():
+    """Delete all cached `eia` data in the current cache folder"""
+    shutil.rmtree(os.path.join(cache_dir(),CACHE_PACKAGE),ignore_errors=True)
+
+class _EIACache(Cache):
+    """@private `cache.Cache` rooted at the `eia` cache folder"""
+    CACHEDIR = None
+
+def cache_entry(*path:str,version:int) -> Cache:
+    """@private Get a cache entry for `eia` data
+
+    Arguments
+    ---------
+
+      - `*path`: path of the cache file relative to the package cache
+        folder, e.g., `"form923", "2020.csv.gz"`
+
+      - `version`: cache schema version; bump it when the cached layout
+        changes so that stale files are ignored
+
+    Returns
+    -------
+
+      - `cache.Cache`: cache entry at `{cache_dir}/eia/{version}/{path}`
+        (the parent folder is created if necessary)
+    """
+    _EIACache.CACHEDIR = cache_dir()
+    return _EIACache(list(path),package=CACHE_PACKAGE,version=version)
 
 MONTHS = ["january","february","march","april","may","june",
     "july","august","september","october","november","december"]

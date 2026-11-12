@@ -91,7 +91,30 @@ in August 2020 (Form 930)
   by energy source start in July 2018.
 
 - Downloaded data are cached locally; pass `refresh=True` (or `--refresh` on
-  the command line) to download again.
+  the command line) to download again. See [Caching](#caching).
+
+## Caching
+
+Cache files are stored under `{cache_dir}/eia/{version}/`, never inside the
+installed package, so read-only installs work and upgrades keep the cache.
+The cache folder is chosen in this order:
+
+1. the folder given to `eia.set_cache_dir(path)` (`None` restores the default),
+2. the environment variable `EIA_CACHE_DIR`,
+3. the platform user cache folder: `~/.cache/eudoxys` on Linux (or
+   `$XDG_CACHE_HOME/eudoxys`), `~/Library/Caches/eudoxys` on macOS, and
+   `%LOCALAPPDATA%\eudoxys\Cache` on Windows.
+
+```python
+import eia
+eia.cache_dir()                    # where the cache is
+eia.set_cache_dir("/data/eia")     # relocate it for this process
+eia.clear_cache()                  # delete all cached eia data
+```
+
+To relocate the cache for the command line tool or all programs, set
+`EIA_CACHE_DIR`, e.g., `export EIA_CACHE_DIR=/data/eia`. To clear it
+without Python, delete the `eia` folder inside the cache folder.
 
 ## Claude Code skill
 

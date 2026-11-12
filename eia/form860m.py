@@ -17,7 +17,7 @@ import warnings
 import zipfile
 import pandas as pd
 import requests
-from eia.base import FormBase, month_number
+from eia.base import FormBase, month_number, cache_entry
 
 def _int(s,default=0):
     try:
@@ -47,8 +47,8 @@ class Form860m(FormBase):
     """
 
     # pylint: disable=invalid-name
-    CACHEDIR = None
-    """Folder in which downloaded files are cached (default is `{package}/.cache`)"""
+    CACHE_VERSION = 1
+    """@private Cache schema version (see `eia.base.cache_entry()`)"""
 
     SUBSETS = {
         "Operating",
@@ -145,10 +145,10 @@ class Form860m(FormBase):
         assert isinstance(raw,bool), "raw must be Boolean"
 
         # load data
-        if self.CACHEDIR is None:
-            self.CACHEDIR = os.path.join(os.path.dirname(__file__),".cache")
-        os.makedirs(self.CACHEDIR,exist_ok=True)
-        cachefile = os.path.join(self.CACHEDIR,f"form860_{year}_{month:02d}.xlsx")
+        cachefile = cache_entry("form860m",f"{year}-{month:02d}.xlsx",
+            version=self.CACHE_VERSION).pathname
+        subsetfile = cache_entry("form860m",f"{year}-{month:02d}-{subset.lower()}.csv.gz",
+            version=self.CACHE_VERSION).pathname
         month_str = dt.date(year,month,1).strftime("%B").lower()
         url = "https://www.eia.gov/electricity/data/eia860m/"\
             f"archive/xls/{month_str}_generator{year}.xlsx"
@@ -165,7 +165,6 @@ class Form860m(FormBase):
                 source = f"downloaded from {url}"
 
             # read from cache
-            subsetfile = f"{cachefile.replace('.xlsx',f'_{subset.lower()}.csv.gz')}"
             if refresh or not os.path.exists(subsetfile):
                 data = pd.read_excel(cachefile,
                     skiprows=2 if year > 2020 or (year == 2020 and month > 10) else 1,

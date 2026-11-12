@@ -49,8 +49,7 @@ import datetime as dt
 import pandas as pd
 import requests
 
-from cache import Cache
-from eia.base import FormBase
+from eia.base import FormBase, cache_entry
 
 def _api_key() -> str:
     """@private Get the EIA API key"""
@@ -127,11 +126,7 @@ class _Form930Base(FormBase):
     def _cached(cls,route:str,respondent:str,facets:dict[str,list[str]],
             year:int,month:int,refresh:bool) -> pd.DataFrame:
         """@private Get one month of raw API data, using the cache if possible"""
-        cache = Cache(
-            package="eia",
-            version=1,
-            path=["form930",route,f"{respondent}-{year}-{month:02d}.csv.gz"],
-            )
+        cache = cache_entry("form930",route,f"{respondent}-{year}-{month:02d}.csv.gz",version=1)
         if cache.exists() and not refresh:
             try:
                 return pd.read_csv(cache.pathname,keep_default_na=False,na_values=[""])
@@ -180,7 +175,7 @@ class _Form930Base(FormBase):
         if sheet in _Form930Base.references:
             return _Form930Base.references[sheet]
 
-        cache = Cache(package="eia",version=0,path=["reference",f"{sheet}.csv"])
+        cache = cache_entry("reference",f"{sheet}.csv",version=0)
         if cache.exists():
             try:
                 data = pd.read_csv(cache.pathname)
