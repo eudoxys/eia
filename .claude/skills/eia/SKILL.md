@@ -128,7 +128,8 @@ Form923(2022).groupby(level="fuel")["gen_mwh"].sum()   # annual totals
   variable `EIA_API_KEY` or in the file `~/.eia/api_key`.
 - `region`: a BA or region code from `Form930.respondents()` (e.g. `CISO`,
   `BPAT`, `ERCO`, `CAL`, `NW`). Calling `respondents()` downloads the EIA
-  930 reference workbook once.
+  930 reference workbook once and caches it; `refresh=True` downloads it
+  again, and an unknown code triggers one automatic re-download.
 - Returns a `RangeIndex` frame with `timestamp`, `load_MW`,
   `generation_MW`, `interchange_MW` (positive interchange is export).
 - `month=None` returns the whole year; months before July 2015 are skipped.
@@ -190,8 +191,13 @@ Known limitation: `.xlsx` output always uses the sheet name `Form861`.
 
 - `AssertionError: year=... is not valid`: the year is outside the
   coverage table above, or later than the current calendar year.
+- `ValueError: ... is not published yet`: the month has not ended (monthly
+  forms) or is in the future (Form 930).
 - `HTTP error 404` on recent months: EIA has not yet posted that month;
   the monthly forms are published with a lag of one month or more.
+- Slow or flaky connections: `eia.set_download_options(timeout=...,
+  retries=...)` or the `EIA_TIMEOUT`/`EIA_RETRIES` environment variables
+  (defaults 300 s and 3 retries).
 - `BadZipFile` or `unable to read ... deleting invalid cache file`: EIA
   returned an HTML error page instead of a workbook; the bad cache file is
   removed automatically, so retry later or with `refresh=True`.

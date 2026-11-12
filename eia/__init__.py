@@ -231,6 +231,21 @@ or on the command line
 
     EIA_CACHE_DIR=/data/eia-cache eia generation_monthly -y 2020 -m 8
 
+Network access
+--------------
+
+Downloads time out after 300 seconds and transient failures (connection
+errors, timeouts, HTTP 429 and 5xx) are retried 3 times with exponential
+backoff. Use `eia.set_download_options()` or the environment variables
+`EIA_TIMEOUT` and `EIA_RETRIES` to change this, e.g.,
+
+    import eia
+    eia.set_download_options(timeout=60,retries=5)
+
+Months that cannot have been published yet (e.g., the current month for the
+monthly forms, or a future month for Form 930) are rejected with a
+`ValueError` before any download is attempted.
+
 Package information
 -------------------
 
@@ -256,4 +271,4 @@ from eia.form861m import Form861m
 from eia.form930 import Form930, Form930Fuel
 from eia.form923 import Form923
 from eia.hs861m import HS861m
-from eia.base import cache_dir, set_cache_dir, clear_cache
+from eia.base import cache_dir, set_cache_dir, clear_cache, download_options, set_download_options

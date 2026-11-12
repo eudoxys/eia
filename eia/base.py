@@ -21,8 +21,19 @@ Downloaded data are cached under `{cache_dir}/eia/{version}/...`, where
 
 The cache is never written inside the installed package. Use
 `eia.base.clear_cache()` to delete all cached `eia` data.
+
+Network access
+--------------
+
+All downloads from EIA go through `eia.base.download()`, which applies a
+timeout, retries transient failures (connection errors, timeouts, HTTP 429
+and 5xx responses) with exponential backoff, and checks the HTTP status.
+The defaults can be changed with `eia.base.set_download_options()` or the
+environment variables `EIA_TIMEOUT` (seconds) and `EIA_RETRIES`.
 """
 import os
+import re
+import time
 import shutil
 import inspect
 import numbers
@@ -31,6 +42,7 @@ import types
 import typing
 import pandas as pd
 import platformdirs
+import requests
 from cache import Cache
 
 CACHE_ENV = "EIA_CACHE_DIR"
@@ -106,6 +118,190 @@ def cache_entry(*path:str,version:int) -> Cache:
     """
     _EIACache.CACHEDIR = cache_dir()
     return _EIACache(list(path),package=CACHE_PACKAGE,version=version)
+
+TIMEOUT_ENV = "EIA_TIMEOUT"
+"""Environment variable that overrides the default download timeout (seconds)"""
+
+RETRIES_ENV = "EIA_RETRIES"
+"""Environment variable that overrides the default number of download retries"""
+
+DEFAULT_TIMEOUT = 300.0
+"""Default download timeout in seconds (per request)"""
+
+DEFAULT_RETRIES = 3
+"""Default number of retries after a transient download failure"""
+
+RETRY_STATUS = frozenset({429,500,502,503,504})
+"""@private HTTP status codes that are retried"""
+
+_download_options = {"timeout":None,"retries":None,"backoff":1.0}
+"""@private Download options set by `set_download_options()`"""
+
+def _env_number(name:str,kind:type,default):
+    """@private Get a numeric environment variable (invalid values use `default`)"""
+    try:
+        value = kind(os.environ[name])
+        return value if value >= 0 else default
+    except (KeyError,ValueError):
+        return default
+
+def download_options() -> dict:
+    """Get the current download options
+
+    Returns
+    -------
+
+      - `dict`: `timeout` (seconds), `retries` (count), and `backoff`
+        (seconds before the first retry, doubled after each retry)
+    """
+    timeout = _download_options["timeout"]
+    retries = _download_options["retries"]
+    return {
+        "timeout": _env_number(TIMEOUT_ENV,float,DEFAULT_TIMEOUT) if timeout is None else timeout,
+        "retries": _env_number(RETRIES_ENV,int,DEFAULT_RETRIES) if retries is None else retries,
+        "backoff": _download_options["backoff"],
+        }
+
+def set_download_options(
+        timeout:float|None=None,
+        retries:int|None=None,
+        backoff:float|None=None,
+        ) -> dict:
+    """Set the download options
+
+    Arguments
+    ---------
+
+      - `timeout`: timeout in seconds for each request (`None` leaves it
+        unchanged)
+
+      - `retries`: number of retries after a transient failure (`None`
+        leaves it unchanged)
+
+      - `backoff`: seconds to wait before the first retry, doubled after
+        each retry (`None` leaves it unchanged)
+
+    Returns
+    -------
+
+      - `dict`: the previous download options (see `download_options()`)
+
+    Raises
+    ------
+
+      - `ValueError`: an option is negative (or `timeout` is zero)
+    """
+    old = download_options()
+    for name,value,kind in [("timeout",timeout,float),("retries",retries,int),("backoff",backoff,float)]:
+        if value is None:
+            continue
+        if isinstance(value,bool) or not isinstance(value,numbers.Real) or value < 0 \
+                or (name == "timeout" and value == 0) or (kind is int and value != int(value)):
+            raise ValueError(f"{name}={value!r} is not valid")
+        _download_options[name] = kind(value)
+    return old
+
+def _redact(text:str) -> str:
+    """@private Remove API keys from text"""
+    return re.sub(r"(api_key=)[^&\s'\"]+",r"\1***",text)
+
+def download(url:str,params=None,*,missing_ok:bool=False,
+        timeout:float|None=None,retries:int|None=None) -> requests.Response|None:
+    """Download a URL from EIA
+
+    Arguments
+    ---------
+
+      - `url`: URL to download
+
+      - `params`: query parameters (passed to `requests.get()`)
+
+      - `missing_ok`: return `None` instead of raising an error when the
+        server reports the URL does not exist (HTTP 404)
+
+      - `timeout`: timeout in seconds (default from `download_options()`)
+
+      - `retries`: retries after a transient failure (default from
+        `download_options()`)
+
+    Returns
+    -------
+
+      - `requests.Response`: the successful (HTTP 200) response, or `None`
+        when `missing_ok` is set and the URL does not exist
+
+    Raises
+    ------
+
+      - `RuntimeError`: the URL cannot be downloaded (API keys are removed
+        from the message)
+    """
+    options = download_options()
+    timeout = options["timeout"] if timeout is None else timeout
+    retries = options["retries"] if retries is None else retries
+    delay = options["backoff"]
+    for attempt in range(retries+1):
+        last = attempt == retries
+        try:
+            req = requests.get(url,params=params,timeout=timeout)
+        except (requests.ConnectionError,requests.Timeout) as err:
+            if last:
+                detail = _redact(str(err))
+                error = RuntimeError(f"'{url}' not available ({type(err).__name__} "
+                    f"after {attempt+1} attempt(s), {timeout=}s: {detail})")
+                # don't chain an exception whose text includes an API key
+                raise error from (None if detail != str(err) else err)
+        else:
+            if req.status_code == 200:
+                return req
+            if req.status_code == 404 and missing_ok:
+                return None
+            if req.status_code not in RETRY_STATUS or last:
+                raise RuntimeError(f"'{url}' not available (HTTP error {req.status_code})")
+        time.sleep(delay)
+        delay *= 2
+    raise AssertionError("unreachable") # pragma: no cover
+
+def latest_month(lag:int=1) -> tuple[int,int]:
+    """@private Get the latest month that can have been published
+
+    Arguments
+    ---------
+
+      - `lag`: number of months after the current month (e.g., `1` means
+        the month must have ended, `0` allows the current month)
+
+    Returns
+    -------
+
+      - `tuple[int,int]`: year and month
+    """
+    now = dt.datetime.now()
+    total = now.year*12 + now.month - 1 - lag
+    return total // 12, total % 12 + 1
+
+def check_published(year:int,month:int,lag:int=1):
+    """@private Check that a month can have been published
+
+    Arguments
+    ---------
+
+      - `year`: year
+
+      - `month`: month (1 to 12)
+
+      - `lag`: see `latest_month()`
+
+    Raises
+    ------
+
+      - `ValueError`: the month is after the latest month that can have
+        been published
+    """
+    last = latest_month(lag)
+    if (year,month) > last:
+        raise ValueError(f"{year=} {month=} is not published yet "
+            f"(latest possible is {last[0]}-{last[1]:02d})")
 
 MONTHS = ["january","february","march","april","may","june",
     "july","august","september","october","november","december"]

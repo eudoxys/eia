@@ -15,8 +15,8 @@ References
 import os
 import warnings
 import pandas as pd
-import requests
-from eia.base import FormBase, cache_entry, check_year, check_month, check_bool
+from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, \
+    check_published, download
 
 _cache = {}
 
@@ -95,6 +95,7 @@ class Form861m(FormBase):
 
         year = check_year(year,2017)
         month = check_month(month)
+        check_published(year,month)
         refresh = check_bool("refresh",refresh)
         raw = check_bool("raw",raw)
 
@@ -111,8 +112,8 @@ class Form861m(FormBase):
                 content = None
                 urls = [x.format(year=year) for x in self.FORM861M_URLS]
                 for url in urls:
-                    req = requests.get(url,timeout=10)
-                    if req.status_code == 200:
+                    req = download(url,missing_ok=True)
+                    if req is not None:
                         content = req.content
                         break
                 if content is None:
