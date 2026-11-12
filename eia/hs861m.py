@@ -119,12 +119,16 @@ class HS861m(FormBase):
             month = month_number(month)
 
         global _cache
-        if not _cache is None:
+        if _cache is not None and not refresh:
             data = _cache.copy()
-        else:    
+        else:
             if self.CACHEDIR:
-                cache.CACHEDIR = self.CACHEDIR      
-            cache = Cache(package="eia",version=0,path=["hs861m.csv"])
+                # use a cache folder for this class without changing the
+                # default folder of other `Cache` users
+                cache_class = type("HS861mCache",(Cache,),{"CACHEDIR":self.CACHEDIR})
+            else:
+                cache_class = Cache
+            cache = cache_class(package="eia",version=0,path=["hs861m.csv"])
             if cache.exists() and not refresh:
                 data = pd.read_csv(cache.pathname)
             else:

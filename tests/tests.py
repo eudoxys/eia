@@ -216,6 +216,35 @@ def test_hs861m_args():
         hs861m._cache = saved
     return errors
 
+def test_hs861m_cachedir():
+    """Test HS 861m honours CACHEDIR without accessing EIA data"""
+    import tempfile
+    import pandas as pd
+    import eia.hs861m as hs861m
+    from cache import Cache
+    errors = 0
+    saved = (hs861m._cache,HS861m.CACHEDIR,Cache.CACHEDIR)
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pathname = os.path.join(tmpdir,"eia","0","hs861m.csv")
+            os.makedirs(os.path.dirname(pathname))
+            pd.DataFrame([{"year":2022,"month":8,"state":"CA","status":"Final",
+                "tot_energy_mwh":1.0}]).to_csv(pathname,index=False)
+            hs861m._cache = None
+            HS861m.CACHEDIR = tmpdir
+            data = HS861m(2022,8)
+            assert len(data) == 1, f"cache file in CACHEDIR not used ({len(data)=})"
+            assert Cache.CACHEDIR == saved[2], "default Cache.CACHEDIR was changed"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: HS861m CACHEDIR --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("HS861m CACHEDIR ok.",file=sys.stderr,flush=True)
+    finally:
+        hs861m._cache,HS861m.CACHEDIR,Cache.CACHEDIR = saved
+    return errors
+
 def test_form923():
     """Test Form 923 data frame by BA and by plant"""
     errors = 0
