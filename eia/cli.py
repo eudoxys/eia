@@ -21,7 +21,7 @@ E_SYNTAX = 2
 """Exit code on syntax error"""
 
 _FORMS = {
-    "bulk_generation": Form861m,
+    "bulk_generation": Form860m,
     "customer_demand": HS861m,
     "distributed_generation": Form861m,
     "region_hourly": Form930,

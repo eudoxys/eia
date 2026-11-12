@@ -7,6 +7,50 @@ from eia.form923 import Form923
 from eia.form930 import Form930, Form930Fuel
 from eia.form861m import Form861m
 from eia.hs861m import HS861m
+from eia import cli
+
+def test_cli_forms():
+    """Test CLI subcommands map to the correct form class"""
+    errors = 0
+    expected = {
+        "bulk_generation": Form860m,
+        "customer_demand": HS861m,
+        "distributed_generation": Form861m,
+        "region_hourly": Form930,
+    }
+    saved = cli._FORMS["bulk_generation"]
+    try:
+        for command,form in expected.items():
+            assert cli._FORMS[command] is form, f"eia {command} uses {cli._FORMS[command].__name__} instead of {form.__name__}"
+
+        # check bulk_generation passes --subset through to Form860m without accessing EIA data
+        called = {}
+        class Stub(Form860m):
+            """Record constructor arguments"""
+            # pylint: disable=super-init-not-called
+            def __init__(self,**kwargs):
+                called.update(kwargs)
+            def __str__(self):
+                return ""
+        Stub.__init__.__annotations__.update(Form860m.__init__.__annotations__)
+        cli._FORMS["bulk_generation"] = Stub
+        with open(os.devnull,"w",encoding="utf-8") as null:
+            stdout,sys.stdout = sys.stdout,null
+            try:
+                code = cli.main("bulk_generation","-y","2020","-m","8","--subset","Planned")
+            finally:
+                sys.stdout = stdout
+        assert code == cli.E_OK, f"eia bulk_generation returned {code=}"
+        assert called.get("subset") == "Planned", f"eia bulk_generation passed {called=} without subset"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: cli --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("cli ok.",file=sys.stderr,flush=True)
+    finally:
+        cli._FORMS["bulk_generation"] = saved
+    return errors
 
 def test_form860m():
     """Test Form 860m data frame"""
