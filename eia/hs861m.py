@@ -20,13 +20,13 @@ refresh=False
 _cache = None
 
 class HS861m(FormBase):
-    """Form 861m customer data frame"""
-
-    SOURCE = "https://www.eia.gov/electricity/data/eia861m/xls/sales_revenue.xlsx"
     """The `HS861m` class is a Pandas data frame loaded with the EIA Form 861
-    customer consumption data for US states starting in 2017.
+    monthly retail sales, revenue, customers, and average price by state and
+    sector, as published in the EIA `sales_revenue.xlsx` table.
 
-    The data frame includes the following columns.
+    The data frame is indexed by `date` (UTC, first of month) and `state`, or
+    by `state` only when both `year` and `month` are given, and includes the
+    following columns.
 
       - `res_revenue_kusd`: residential revenue in thousands of US dollars
 
@@ -67,7 +67,14 @@ class HS861m(FormBase):
       - `tot_customers_qty`: number of total customers
 
       - `tot_price_cpkwh`: average total energy price in US cents per kWh
+
+    If the `raw` argument is `True`, the table is returned with a default
+    integer index and the `year`, `month`, and `status` columns, without
+    cleanup.
     """
+
+    SOURCE = "https://www.eia.gov/electricity/data/eia861m/xls/sales_revenue.xlsx"
+    """URL of the EIA Form 861m sales and revenue workbook"""
 
     def __init__(
         self,

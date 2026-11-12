@@ -57,8 +57,8 @@ line* below); use the Python API when you need the data frame itself.
 - Columns absent from a given month's sheet are filled with a default
   (`0` for integers, `NaN` for floats, `""` for strings).
 - `raw=True` returns the EIA sheet as strings with the original headers.
-- The class docstring mentions `date` and `state` columns; those are not
-  present. Use `STATE` and the requested `year`/`month`.
+- There are no `date` or `state` columns; use `STATE` and the requested
+  `year`/`month`.
 
 ```python
 gen = Form860m(2024, 6)                       # operating fleet, June 2024
@@ -92,7 +92,8 @@ dg.set_index("state").loc["WA", ["tot_mw", "tot_mwh"]]
 - Missing values are set to `0.0` unless `raw=True`.
 - `raw=True` returns the whole table unfiltered; `year` and `month` are
   ignored.
-- Pass `year` and `month` as `int`; a `str` month raises `ValueError`.
+- `year` and `month` accept `int` or `str`, including month names such as
+  `"Jul"`.
 
 ```python
 sales = HS861m(2022, 7)

@@ -17,11 +17,11 @@ Syntax
 Positional arguments
 --------------------
 
-- `bulk_generation`: EIA Form 860m bulk generation data
+- `bulk_generation`: EIA Form 860m generator inventory
 
-- `customer_demand`: EIA Form 861m customer consumption data
+- `customer_demand`: EIA Form 861m retail sales, revenue, customers, and price
 
-- `distributed_generation`: EIA Form 861m non-bulk generation data
+- `distributed_generation`: EIA Form 861m small-scale solar data
 
 - `generation_monthly`: EIA Form 923 monthly net generation by balancing
   authority or by plant, prime mover, and fuel
@@ -88,11 +88,11 @@ Supported forms
 
 Currently supported forms are
 
-- `eia.form860m.Form860m`: Bulk power system generation fleet (1MW capacity cut-off)
+- `eia.form860m.Form860m`: Monthly inventory of generators of 1 MW or more
 
-- `eia.form861m.Form861m`: Distributed generation capacity and energy data (1MW capacity cut-off)
+- `eia.form861m.Form861m`: Small-scale (under 1 MW) solar capacity and energy by state and sector
 
-- `eia.hs861m.HS861m`: Customer energy consumption data (1MW capacity cut-off)
+- `eia.hs861m.HS861m`: Monthly retail sales, revenue, customers, and price by state and sector
 
 - `eia.form923.Form923`: Monthly net generation by balancing authority or by
   plant, prime mover, and fuel

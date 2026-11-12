@@ -2,12 +2,13 @@
 
 Access the following EIA Form data
 
-  - Form 860m: Bulk system generation monthly capacity and production
+  - Form 860m: Monthly inventory of generators of 1 MW or more
 
-  - Form 861m: Distributed/small scale month generation capacity and
-    production
+  - Form 861m: Monthly small-scale (under 1 MW) solar capacity and generation
+    by state and sector
 
-  - HS 861: Customer monthly energy consumption
+  - HS 861m: Monthly retail sales, revenue, customers, and price by state and
+    sector
 
   - Form 923: Monthly net generation by state, balancing authority, and fuel,
     or by plant, prime mover, and fuel

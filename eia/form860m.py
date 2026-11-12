@@ -36,14 +36,47 @@ class Form860m(FormBase):
     """The `Form860m` class is a Pandas data frame loaded with the EIA Form 860m
     monthly archive of electric generator inventory.
 
-    The data frame includes the following columns.
+    The data frame has a default integer index and one row per generator in
+    the requested `subset` of the fleet as of the requested month. The
+    columns are the values of `COLUMNS`:
 
-      - `date`: the primary index indicate the date on which the new values go
-        into effect.
+      - `OWNER_ID`, `OWNER_NAME`: EIA entity (owner) id and name
 
-      - `state`: the state for which the values are in effect.
+      - `ID`, `NAME`: EIA plant id and name
 
-    If the `raw` argument is `True`, the original EIA data is returned.
+      - `STATE`, `COUNTY`, `BA_CODE`: plant location and balancing authority
+
+      - `SECTOR`, `GENERATOR_ID`, `UNIT_CODE`: sector, generator id, and unit
+        code
+
+      - `NAMEPLATE_MW`, `SUMMER_MW`, `WINTER_MW`, `DC_NET_MW`: nameplate,
+        net summer, net winter, and DC net capacity in MW
+
+      - `NAMEPLATE_MWH`: nameplate energy capacity in MWh (storage)
+
+      - `TECHNOLOGY`, `ENERGY_SOURCE_CODE`, `PRIME_MOVER_CODE`: technology,
+        energy source, and prime mover
+
+      - `OPERATING_MONTH`, `OPERATING_YEAR`: month and year the generator
+        began operating
+
+      - `PLANNED_RETIREMENT_MONTH`, `PLANNED_RETIREMENT_YEAR`: planned
+        retirement month and year
+
+      - `STATUS`: generator status code
+
+      - `PLANNED_DERATE_YEAR`, `PLANNED_DERATE_MONTH`, `DERATE_SUMMER_MW`,
+        `PLANNED_UPRATE_YEAR`, `PLANNED_UPRATE_MONTH`, `UPRATE_SUMMER_MW`:
+        planned changes to net summer capacity
+
+      - `LAT`, `LON`: plant latitude and longitude
+
+    Columns absent from a month's workbook are filled with `0` (integers),
+    `NaN` (floats), or `""` (strings); missing or non-numeric values in
+    existing integer and float columns are set the same way.
+
+    If the `raw` argument is `True`, the EIA worksheet is returned with its
+    original column names and all values as strings.
     """
 
     # pylint: disable=invalid-name
@@ -94,7 +127,7 @@ class Form860m(FormBase):
         "Latitude": ("LAT",_float),
         "Longitude": ("LON",_float)
     }
-    """Table mapping EIA data columns to `eia.form860m.Format860M` data frame columns"""
+    """Table mapping EIA data columns to `eia.form860m.Form860m` data frame columns"""
 
     def __init__(self,
         # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -105,7 +138,7 @@ class Form860m(FormBase):
         refresh:bool=None,
         raw:bool=None,
         ):
-        """Construct EIA Forma 860m data frame
+        """Construct EIA Form 860m data frame
 
         Arguments
         ---------
