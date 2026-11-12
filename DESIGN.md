@@ -326,14 +326,20 @@ version before `eia` can be uploaded (#2).
 
 **Target layout (#18, #19):**
 
-- `pytest`, with tests under `tests/` named `test_*.py`.
-- **Offline unit tests** (default): small fixture workbooks and recorded API
-  JSON under `tests/data/`, served by mocking the download helper. Cover
-  parsing, normalisation, column names/dtypes, period validation, cache
-  behaviour, and every CLI subcommand and output format.
-- **Live tests** marked `@pytest.mark.network`, run on a schedule (not on
-  every push), with `EIA_API_KEY` from repository secrets. They detect EIA
-  layout or URL changes.
+- `pytest`, with tests under `tests/` named `test_*.py` (one file per form,
+  plus `test_base.py`, `test_cli.py`, and `test_conventions.py`). *Done
+  (#21).*
+- **Offline unit tests** (default): small synthetic EIA workbooks, zip files,
+  and API responses, built by `tests/samples.py` and served by mocking
+  `requests.get`. They cover parsing, normalisation, column names, period
+  validation, cache behaviour, and every CLI subcommand and output format.
+  `tests/conftest.py` gives every offline test an empty cache folder. *Done
+  (#21); the samples are generated in code rather than stored under
+  `tests/data/`, so no binary fixtures are committed.*
+- **Live tests** marked `@pytest.mark.network`, deselected by default and run
+  with `pytest -m network`. They detect EIA layout or URL changes. *Marked
+  (#21); running them on a schedule (not on every push) with `EIA_API_KEY`
+  from repository secrets is still open (#20).*
 - CI matrix: Python 3.11–3.13; `pylint --fail-under` set to the current
   score and raised over time.
 - Usage examples live in `examples/`, not in `__main__` blocks of the

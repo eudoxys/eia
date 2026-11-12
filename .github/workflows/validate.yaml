@@ -30,8 +30,11 @@ jobs:
         cd eia
         pylint --fail-under 0 *.py
 
-    - name: Run tests
+    - name: Run offline tests
       run: |
-        cd tests
-        pip install ..
-        python3 tests.py
+        pip install . pytest
+        pytest
+
+    - name: Run network tests
+      run: |
+        pytest -m network

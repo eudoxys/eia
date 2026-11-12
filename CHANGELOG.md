@@ -19,6 +19,10 @@ First public release. Changes since the initial import:
 
 ### Changed
 
+- The test suite uses `pytest` (#21). Tests are split by module under
+  `tests/test_*.py`, run offline by default against small synthetic EIA
+  workbooks and API responses, and the tests that download data from EIA
+  are marked `network` (run them with `pytest -m network`).
 - **Breaking:** consistent public API across all forms (#19). Every form
   takes `Form(year, month=None, *, <filters>, raw=False, refresh=False)`;
   filters and options are keyword-only, and Form 930 takes
