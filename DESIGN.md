@@ -29,7 +29,8 @@ In scope:
 Out of scope:
 
 - Analysis, aggregation beyond what a form natively offers, or modelling.
-- Plotting (the `__main__` demo blocks are examples only, see §11).
+- Plotting (the scripts in `examples/` may plot with matplotlib, which is
+  not a dependency; see §11).
 - Non-electricity EIA datasets.
 
 ## 2. Supported data sources
@@ -301,8 +302,8 @@ cache file.
 
 ## 9. Dependencies
 
-Runtime: `pandas`, `openpyxl`, `requests`, `cache`. `pytz` is unused and
-should be dropped (#21). `platformdirs` is added only if §4.2 is adopted and
+Runtime: `pandas`, `openpyxl`, `requests`, `cache`. *Done (#33):* the
+unused `pytz` dependency is dropped. `platformdirs` is added only if §4.2 is adopted and
 `cache` does not provide the user cache dir itself.
 
 `cache` must be published to PyPI under a non-clashing name and pinned by
@@ -335,8 +336,9 @@ version before `eia` can be uploaded (#2).
   layout or URL changes.
 - CI matrix: Python 3.11–3.13; `pylint --fail-under` set to the current
   score and raised over time.
-- `__main__` demo blocks move to `examples/` (they import matplotlib, which
-  is not a dependency).
+- Usage examples live in `examples/`, not in `__main__` blocks of the
+  package modules (some import matplotlib, which is not a dependency).
+  *Done (#23).*
 
 ## 12. Documentation
 
