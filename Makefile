@@ -1,4 +1,4 @@
-# make documentation
+# make documentation (requires pdoc: pip install pdoc)
 
 PACKAGE=eia
 
@@ -7,5 +7,4 @@ LOGO="https://github.com/eudoxys/.github/blob/main/eudoxys_banner.png?raw=true"
 LINK="https://www.eudoxys.com/"
 
 docs: $(SOURCE)
-	pip install --upgrade pdoc
 	pdoc $(SOURCE) -o $@ --logo $(LOGO) --mermaid --logo-link $(LINK)

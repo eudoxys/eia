@@ -78,7 +78,7 @@ taking it.
 
 5. If you change a public class, function, argument, or output, update its
    docstring and example output, the package docstring, and the README.
-   Check the documentation builds with `make docs`.
+   Check the documentation builds with `make docs` (needs `pip install pdoc`).
 6. Don't commit caches, downloaded data, or generated output. Changes to
    curated data must include the script that produces them and an updated
    data README.

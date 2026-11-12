@@ -338,7 +338,8 @@ version before `eia` can be uploaded (#2).
 - `README.md` lists all supported forms and CLI subcommands with one example
   each; it must match `eia --help`.
 - Generated HTML is built and published by CI (GitHub Pages) rather than
-  committed under `docs/` (#16).
+  committed under `docs/` (#18). `make docs` builds it locally into the
+  git-ignored `docs/` folder; install `pdoc` first.
 
 ## 13. Adding a new form
 
