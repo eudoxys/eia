@@ -9,9 +9,11 @@ References
   - https://www.eia.gov/electricity/data/eia861m/
 """
 
+from io import BytesIO
 import numpy as np
 import pandas as pd
-from eia.base import FormBase, cache_entry, check_year, check_month, check_bool
+from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, \
+    check_published, download
 
 refresh=False
 
@@ -103,9 +105,13 @@ class HS861m(FormBase):
 
           - `ValueError`: `year` or `month` is not valid, or no data is
             available for the selection
+
+          - `RuntimeError`: the workbook cannot be downloaded
         """
         year = check_year(year,1990,optional=True)
         month = check_month(month,optional=True)
+        if year is not None and month is not None:
+            check_published(year,month)
         refresh = check_bool("refresh",refresh)
         raw = check_bool("raw",raw)
 
@@ -117,7 +123,8 @@ class HS861m(FormBase):
             if cache.exists() and not refresh:
                 data = pd.read_csv(cache.pathname)
             else:
-                data = pd.read_excel(self.SOURCE,header=[0,1,2]).round(2)
+                content = download(self.SOURCE).content
+                data = pd.read_excel(BytesIO(content),header=[0,1,2]).round(2)
                 replace = {
                     "year":"year",
                     "month":"month",

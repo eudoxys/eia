@@ -10,6 +10,7 @@ from eia.hs861m import HS861m
 from eia import cli
 from eia.base import month_number
 import eia.base
+import eia.form930
 
 def test_cli_forms():
     """Test CLI subcommands map to the correct form class"""
@@ -465,7 +466,7 @@ def test_form861m_cache():
                 requested.append(url)
                 ok = url == Form861m.FORM861M_URLS[1].format(year=2024)
                 return mock.Mock(status_code=200 if ok else 404,content=content)
-            with mock.patch("eia.form861m.requests.get",side_effect=fake_get):
+            with mock.patch("eia.base.requests.get",side_effect=fake_get):
                 data = Form861m(2024,3)
             assert len(data) == 2, f"expected 2 rows, got {len(data)}"
             assert len(requested) == 2, f"expected 2 URLs tried, got {requested}"
@@ -541,7 +542,7 @@ from eia.form861m import Form861m
 from eia.form923 import Form923
 from eia.form930 import Form930, Form930Fuel, _Form930Base
 from eia.hs861m import HS861m
-_Form930Base.respondents = staticmethod(lambda: ["CAL"])
+_Form930Base.respondents = staticmethod(lambda refresh=False: ["CAL"])
 cases = [
     (TypeError, check_year, (2020.0, 2015), {}),
     (TypeError, check_year, (True, 2015), {}),
@@ -685,6 +686,197 @@ def test_cache_dir():
         print("cache folder ok.",file=sys.stderr,flush=True)
     finally:
         eia.base._cache_dir = saved
+    return errors
+
+def test_download():
+    """Test the download helper without accessing EIA data"""
+    # pylint: disable=too-many-statements
+    from unittest import mock
+    import requests
+    errors = 0
+    saved = eia.base.set_download_options(backoff=0)
+    try:
+        def responses(*items):
+            """Fake requests.get returning/raising items in order"""
+            calls = []
+            def fake_get(url,params=None,timeout=None):
+                calls.append((url,params,timeout))
+                item = items[len(calls)-1]
+                if isinstance(item,Exception):
+                    raise item
+                return mock.Mock(status_code=item,content=b"data")
+            return fake_get,calls
+
+        # success, timeout passed through
+        fake,calls = responses(200)
+        with mock.patch("eia.base.requests.get",side_effect=fake):
+            assert eia.base.download("u",timeout=7).content == b"data", "wrong content"
+        assert calls == [("u",None,7)], f"unexpected calls {calls}"
+
+        # transient failures are retried
+        fake,calls = responses(requests.ConnectionError("x"),503,requests.Timeout("y"),200)
+        with mock.patch("eia.base.requests.get",side_effect=fake):
+            assert eia.base.download("u",retries=3) is not None, "retry did not succeed"
+        assert len(calls) == 4, f"expected 4 attempts, got {len(calls)}"
+
+        # retries exhausted
+        fake,calls = responses(503,503)
+        with mock.patch("eia.base.requests.get",side_effect=fake):
+            try:
+                eia.base.download("u",retries=1)
+            except RuntimeError as err:
+                assert "503" in str(err), f"status missing from error: {err}"
+            else:
+                raise AssertionError("exhausted retries did not raise RuntimeError")
+        assert len(calls) == 2, f"expected 2 attempts, got {len(calls)}"
+
+        # 404 is not retried; missing_ok returns None
+        fake,calls = responses(404)
+        with mock.patch("eia.base.requests.get",side_effect=fake):
+            assert eia.base.download("u",missing_ok=True) is None, "missing_ok did not return None"
+        assert len(calls) == 1, "404 was retried"
+        fake,calls = responses(404)
+        with mock.patch("eia.base.requests.get",side_effect=fake):
+            try:
+                eia.base.download("u")
+            except RuntimeError as err:
+                assert "404" in str(err), f"status missing from error: {err}"
+            else:
+                raise AssertionError("404 did not raise RuntimeError")
+
+        # API keys are removed from error text and not chained
+        fake,calls = responses(requests.ConnectionError("https://x/?api_key=SECRET&a=1"))
+        with mock.patch("eia.base.requests.get",side_effect=fake):
+            try:
+                eia.base.download("u",retries=0)
+            except RuntimeError as err:
+                assert "SECRET" not in str(err) and err.__cause__ is None, f"API key leaked: {err}"
+            else:
+                raise AssertionError("connection error did not raise RuntimeError")
+
+        # options and environment
+        with mock.patch.dict(os.environ,{eia.base.TIMEOUT_ENV:"12",eia.base.RETRIES_ENV:"bad"}):
+            eia.base._download_options.update(timeout=None,retries=None)
+            options = eia.base.download_options()
+            assert options["timeout"] == 12 and options["retries"] == eia.base.DEFAULT_RETRIES, \
+                f"environment ignored {options}"
+        for bad in [{"timeout":0},{"retries":-1},{"retries":1.5},{"backoff":"1"}]:
+            try:
+                eia.base.set_download_options(**bad)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"set_download_options({bad}) did not raise ValueError")
+    except Exception as err:
+        print(f"ERROR [eia.tests]: download --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("download ok.",file=sys.stderr,flush=True)
+    finally:
+        eia.base._download_options.update(timeout=None,retries=None,backoff=saved["backoff"])
+    return errors
+
+def test_published():
+    """Test unpublished months are rejected without accessing EIA data"""
+    from unittest import mock
+    errors = 0
+    try:
+        now = dt.datetime.now()
+        this = (now.year,now.month)
+        prev = (now.year,now.month-1) if now.month > 1 else (now.year-1,12)
+        assert eia.base.latest_month(0) == this, "lag 0 is not the current month"
+        assert eia.base.latest_month(1) == prev, "lag 1 is not the previous month"
+        assert eia.base.latest_month(13)[0] == now.year-1 - (now.month == 1), "lag 13 is wrong"
+        eia.base.check_published(*prev)
+        eia.base.check_published(*this,lag=0)
+        with mock.patch("eia.base.requests.get",side_effect=AssertionError("network accessed")):
+            for form,args in [(Form860m,this),(Form861m,this),(HS861m,this),(Form923,this)]:
+                try:
+                    form(*args)
+                except ValueError as err:
+                    assert "not published" in str(err), f"{form.__name__}: {err}"
+                else:
+                    raise AssertionError(f"{form.__name__}{args} did not raise ValueError")
+            if now.month < 12:
+                with mock.patch.object(Form930,"_check_respondent"):
+                    try:
+                        Form930("CISO",now.year,now.month+1)
+                    except ValueError as err:
+                        assert "not published" in str(err), f"Form930: {err}"
+                    else:
+                        raise AssertionError("Form930 future month did not raise ValueError")
+        months = eia.form930._months(now.year,None)
+        assert months == list(range(1,now.month+1)), f"Form930 whole year includes {months}"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: unpublished months --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("unpublished months ok.",file=sys.stderr,flush=True)
+    return errors
+
+def test_form930_reference():
+    """Test Form 930 reference data caching and refresh without accessing EIA data"""
+    import io
+    import tempfile
+    from unittest import mock
+    import pandas as pd
+    from eia.form930 import _Form930Base
+    errors = 0
+    saved = eia.base._cache_dir
+    def workbook(*codes):
+        """Reference workbook containing the given BA codes"""
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer,engine="openpyxl") as writer:
+            pd.DataFrame({"BA Code":list(codes)}).to_excel(writer,sheet_name="BAs",index=False)
+            pd.DataFrame({"Region/Country Code":["CAL"]}).to_excel(writer,sheet_name="Regions",index=False)
+        return buffer.getvalue()
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            eia.base.set_cache_dir(tmpdir)
+            _Form930Base.references.clear()
+            _Form930Base._references_refreshed = False
+            downloads = []
+            content = {"data":workbook("CISO")}
+            def fake_get(url,**_):
+                downloads.append(url)
+                return mock.Mock(status_code=200,content=content["data"])
+            with mock.patch("eia.base.requests.get",side_effect=fake_get):
+                assert _Form930Base.respondents() == ["CAL","CISO"], "wrong respondents"
+                assert len(downloads) == 1, f"workbook downloaded {len(downloads)} times"
+
+                # a new process reads the disk cache without network access
+                _Form930Base.references.clear()
+                _Form930Base._references_refreshed = False
+                Form930._check_respondent("region","CISO")
+                assert len(downloads) == 1, "cached reference data was downloaded again"
+
+                # an unknown code refreshes the cache once
+                content["data"] = workbook("CISO","NEWB")
+                Form930._check_respondent("region","NEWB")
+                assert len(downloads) == 2, "unknown code did not refresh reference data"
+                try:
+                    Form930._check_respondent("region","NOPE")
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError("invalid code did not raise ValueError")
+                assert len(downloads) == 2, "invalid code refreshed reference data twice"
+
+                # refresh always downloads
+                _Form930Base.respondents(refresh=True)
+                assert len(downloads) == 3, "refresh did not download reference data"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: Form930 reference --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("Form930 reference ok.",file=sys.stderr,flush=True)
+    finally:
+        eia.base._cache_dir = saved
+        _Form930Base.references.clear()
+        _Form930Base._references_refreshed = False
     return errors
 
 def test_form923():

@@ -47,10 +47,10 @@ from warnings import warn
 from zipfile import ZipFile
 import calendar
 
-import requests
 import pandas as pd
 
-from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, check_choice
+from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, check_choice, \
+    check_published, download
 
 class Form923(FormBase):
     """Form923 DataFrame
@@ -133,7 +133,8 @@ class Form923(FormBase):
         Raises
         ------
         - `TypeError`: an argument has the wrong type
-        - `ValueError`: `year`, `month` or `by` is not valid
+        - `ValueError`: `year`, `month` or `by` is not valid, or the month is
+          not published yet
         """
         # pylint: disable=too-many-arguments,too-many-locals,too-many-branches
 
@@ -142,6 +143,8 @@ class Form923(FormBase):
         if year >= dt.datetime.now().year-1:
             warn(f"{year=} may not be finalized yet")
         month = check_month(month,optional=True)
+        if month is not None:
+            check_published(year,month)
         check_choice("by",by,self.INDEX)
         increments = check_bool("increments",increments)
         refresh = check_bool("refresh",refresh)
@@ -207,8 +210,8 @@ class Form923(FormBase):
         # download from EIA
         content = None
         for url in [x.format(year=year) for x in cls.FORM923_URLS]:
-            req = requests.get(url,timeout=300)
-            if req.status_code == 200:
+            req = download(url,missing_ok=True)
+            if req is not None:
                 content = req.content
                 break
         if content is None:

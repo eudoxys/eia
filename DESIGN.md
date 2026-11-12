@@ -109,6 +109,10 @@ missing from the rest, which is why the `region_hourly` CLI subcommand fails
 - `_download(url | list[url], *, timeout, retries)` — one HTTP helper with a
   configurable timeout, status check, fallback across URL candidates, and
   redaction of `api_key` from error text (#13, #14).
+  *Done (#15):* `eia.base.download(url, params, *, missing_ok, timeout,
+  retries)` is used by every form; URL fallback stays in the forms (they
+  pass `missing_ok=True` and try the next candidate on `None`). Defaults
+  come from `eia.set_download_options()` or `EIA_TIMEOUT`/`EIA_RETRIES`.
 - `_cache(form, *parts, version)` — one constructor for cache paths (§4).
 
 ## 4. Caching
@@ -125,7 +129,7 @@ All forms use `cache.Cache` through `eia.base.cache_entry()`, rooted at
 | `HS861m` | `cache_entry(version=0)` + module global | `{cache_dir}/eia/0/` | one CSV for all years; in-process copy | `refresh=True` (but the in-process copy ignores it) |
 | `Form923` | `cache_entry(version=1)` | `{cache_dir}/eia/1/form923/` | normalised `.csv.gz` per year | `refresh=True`; regenerated on read error |
 | `Form930*` | `cache_entry(version=1)` | `{cache_dir}/eia/1/form930/` | raw API rows `.csv.gz` per respondent × month | `refresh=True`; regenerated on read error |
-| Form 930 reference tables | `cache_entry(version=0)` + class dict | `{cache_dir}/eia/0/reference/` | one CSV per sheet | never (ignores `refresh`) |
+| Form 930 reference tables | `cache_entry(version=1)` + class dict | `{cache_dir}/eia/1/reference/` | raw reference workbook | `refresh=True` on any Form 930 class or `respondents()`/`reference_data()`; re-downloaded once per process when a respondent code is not found (#15) |
 
 `cache_dir` is the folder set by `eia.set_cache_dir()`, else
 `$EIA_CACHE_DIR`, else `platformdirs.user_cache_dir("eudoxys")`. `eia` uses a
@@ -148,7 +152,9 @@ per-class `CACHEDIR` attributes. `eia.clear_cache()` deletes
 - **Failure handling.** Distinguish *unreadable file* (delete and re-download,
   with a warning naming the path) from *requested period absent* (raise
   `ValueError` without touching the cache).
-- **Reference data** honours `refresh` and has a maximum age.
+- **Reference data** honours `refresh` and has a maximum age. *Partly done
+  (#15):* honours `refresh` and refreshes itself when an unknown respondent
+  code is requested; no maximum age.
 - **In-process memoisation** is optional, keyed by the full argument tuple,
   and always bypassed by `refresh=True`.
 - **User control.** Done (#13): `eia.cache_dir()` and `eia.clear_cache()`
@@ -246,9 +252,11 @@ coerce and validate arguments with the shared helpers in `eia.base`
 (`check_year`, `check_month`, `check_bool`, `check_choice`), which raise
 `TypeError` for a bad argument type and `ValueError` for a bad value or a
 year before the form's first published year; `str` years and month numbers,
-names or abbreviations are accepted by every form. Network failures still
-surface as `RuntimeError`, `KeyError` or `UnboundLocalError` depending on the
-module (#6, #7, #15).
+names or abbreviations are accepted by every form. Network failures surface
+as `RuntimeError` from `eia.base.download()` (#15). Months that cannot have
+been published yet (not yet ended for the monthly forms, in the future for
+Form 930) raise `ValueError` "not published yet" before any download (#15);
+months that have ended but EIA has not posted still fail at download time.
 
 **Target.**
 
@@ -269,13 +277,16 @@ cache file.
 
 - All HTTP goes through the shared download helper (§3.2): default timeout
   300 s for workbooks and API pages, limited retries with back-off, explicit
-  status check.
+  status check. *Done (#15):* 3 retries on connection errors, timeouts,
+  HTTP 429 and 5xx, with backoff starting at 1 s and doubling.
 - API pagination uses `PAGE_LENGTH = 5000` and stops when `offset >= total`.
 - The API key is read from `EIA_API_KEY`, then
   `os.path.expanduser("~/.eia/api_key")` (works on Windows; #14). It is
   never logged or included in exception text.
 - Constructing a form must not require network access when the requested data
-  is already cached (currently violated by `Form930.respondents()`; #13).
+  is already cached. *Done:* the Form 930 reference workbook is read from
+  the disk cache; the network is used only when it is missing, `refresh`
+  is set, or the respondent code is not in it (#15).
 
 ## 9. Dependencies
 

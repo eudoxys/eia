@@ -16,8 +16,8 @@ import datetime as dt
 import warnings
 import zipfile
 import pandas as pd
-import requests
-from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, check_choice
+from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, check_choice, \
+    check_published, download
 
 def _int(s,default=0):
     try:
@@ -126,7 +126,8 @@ class Form860m(FormBase):
 
           - `TypeError`: an argument has the wrong type
 
-          - `ValueError`: `year`, `month` or `subset` is not valid
+          - `ValueError`: `year`, `month` or `subset` is not valid, or the
+            month is not published yet
 
           - `RuntimeError`: the workbook cannot be downloaded or read
         """
@@ -134,6 +135,7 @@ class Form860m(FormBase):
         # check arguments
         year = check_year(year,2015)
         month = check_month(month)
+        check_published(year,month)
         subset = check_choice("subset","Operating" if subset is None else subset,self.SUBSETS)
         refresh = check_bool("refresh",refresh)
         raw = check_bool("raw",raw)
@@ -151,9 +153,7 @@ class Form860m(FormBase):
             if refresh or not os.path.exists(cachefile):
 
                 # download data from EIA
-                req = requests.get(url,timeout=10)
-                if req.status_code != 200:
-                    raise RuntimeError(f"'{url}' not available (HTTP error {req.status_code})")
+                req = download(url)
                 with open(cachefile,"wb") as fh:
                     fh.write(req.content)
                 source = f"downloaded from {url}"

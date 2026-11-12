@@ -45,10 +45,11 @@ References
   - https://www.eia.gov/opendata/browser/electricity/rto
 """
 import os
+import zipfile
 import pandas as pd
-import requests
 
-from eia.base import FormBase, cache_entry, check_year, check_month, check_bool
+from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, \
+    check_published, latest_month, download
 
 def _api_key() -> str:
     """@private Get the EIA API key"""
@@ -57,10 +58,18 @@ def _api_key() -> str:
     with open(os.path.join(os.environ["HOME"],".eia","api_key"),"r",encoding="utf-8") as fh:
         return fh.read().strip()
 
-def _months(month:int|str|None) -> list[int]:
-    """@private Get list of months to load"""
-    month = check_month(month,optional=True)
-    return list(range(1,13)) if month is None else [month]
+def _months(year:int,month:int|None) -> list[int]:
+    """@private Get list of months to load
+
+    A single month is checked against the current month (Form 930 data are
+    published hourly, so the current month is allowed). When `month` is
+    `None`, months after the current month are omitted.
+    """
+    if month is not None:
+        check_published(year,month,lag=0)
+        return [month]
+    last = latest_month(lag=0)
+    return [x for x in range(1,13) if (year,x) <= last]
 
 def _hours(year:int,month:int) -> pd.DatetimeIndex:
     """@private Get hour-beginning UTC timestamps for a month"""
@@ -81,6 +90,9 @@ class _Form930Base(FormBase):
 
     references = {}
     """@private runtime cache of reference data"""
+
+    _references_refreshed = False
+    """@private whether the reference workbook was downloaded by this process"""
 
     @classmethod
     def _download(cls,route:str,facets:dict[str,list[str]],year:int,month:int) -> pd.DataFrame:
@@ -106,9 +118,10 @@ class _Form930Base(FormBase):
         result = []
         offset = 0
         while True:
-            req = requests.get(url,params=params+[("offset",offset)],timeout=300)
-            if req.status_code != 200:
-                raise RuntimeError(f"{url} {route=} {facets=} {year=} {month=} --> HTTP {req.status_code}")
+            try:
+                req = download(url,params=params+[("offset",offset)])
+            except RuntimeError as err:
+                raise RuntimeError(f"{route=} {facets=} {year=} {month=}: {err}") from err
             response = req.json()["response"]
             data = response["data"]
             result.extend(data)
@@ -139,24 +152,41 @@ class _Form930Base(FormBase):
         return pd.DatetimeIndex(pd.to_datetime(period,format="%Y-%m-%dT%H",utc=True)) - pd.Timedelta(hours=1)
 
     @classmethod
-    def _check_respondent(cls,name:str,value:str):
-        """@private Validate a respondent code argument"""
+    def _check_respondent(cls,name:str,value:str,refresh:bool=False):
+        """@private Validate a respondent code argument
+
+        When `refresh` is set, or the code is not found in the cached
+        reference data, the reference data are downloaded again (at most
+        once per process unless `refresh` is set) so that respondent codes
+        EIA added since the cache was made are accepted.
+        """
         if not isinstance(value,str):
             raise TypeError(f"{name} must be a str, not {type(value).__name__} "
                 "(`--region` on the command line)")
-        if value not in cls.respondents():
-            raise ValueError(f"{name}={value!r} is not a valid respondent code "
-                "(see `respondents()`)")
+        if value in cls.respondents(refresh=refresh):
+            return
+        if not refresh and not _Form930Base._references_refreshed \
+                and value in cls.respondents(refresh=True):
+            return
+        raise ValueError(f"{name}={value!r} is not a valid respondent code "
+            "(see `respondents()`)")
 
     @staticmethod
-    def respondents() -> list[str]:
+    def respondents(refresh:bool=False) -> list[str]:
         """Get valid respondent codes (balancing authorities and regions)
+
+        Arguments
+        ---------
+
+          - `refresh`: download the reference data again (default `False`)
 
         Returns
         -------
 
           - `list[str]`: balancing authority and region codes
         """
+        if refresh:
+            _Form930Base._refresh_references()
         codes = set()
         for sheet,column in [("BAs","BA Code"),("Regions","Region/Country Code")]:
             try:
@@ -166,36 +196,54 @@ class _Form930Base(FormBase):
         return sorted(codes)
 
     @staticmethod
-    def reference_data(sheet):
-        """Download Form930 reference data sheets
+    def _reference_cache():
+        """@private Cache entry for the reference workbook"""
+        return cache_entry("reference","EIA930_Reference_Tables.xlsx",version=1)
+
+    @staticmethod
+    def _refresh_references():
+        """@private Download the reference workbook into the cache"""
+        cache = _Form930Base._reference_cache()
+        content = download(_Form930Base.REFERENCE_URL).content
+        with open(cache.pathname,"wb") as fh:
+            fh.write(content)
+        _Form930Base.references.clear()
+        _Form930Base._references_refreshed = True
+
+    @staticmethod
+    def reference_data(sheet:str,refresh:bool=False) -> pd.DataFrame:
+        """Get Form 930 reference data sheets
+
+        The reference workbook is downloaded once and cached; use `refresh`
+        to download it again (e.g., when EIA adds respondents).
 
         Arguments
         ---------
 
           - `sheet`: sheet name to return
 
+          - `refresh`: download the reference workbook again (default
+            `False`)
+
         Returns
         -------
 
           - `pandas.DataFrame`: sheet data
         """
+        if refresh:
+            _Form930Base._refresh_references()
         if sheet in _Form930Base.references:
             return _Form930Base.references[sheet]
 
-        cache = cache_entry("reference",f"{sheet}.csv",version=0)
-        if cache.exists():
-            try:
-                data = pd.read_csv(cache.pathname)
-            except Exception: # pylint: disable=broad-exception-caught
-                data = None
-        else:
-            data = None
-        if data is None:
-            data = pd.read_excel(
-                _Form930Base.REFERENCE_URL,
-                sheet_name=sheet,
-                )
-            data.to_csv(cache.pathname,index=False,header=True)
+        cache = _Form930Base._reference_cache()
+        if not cache.exists():
+            _Form930Base._refresh_references()
+        try:
+            data = pd.read_excel(cache.pathname,sheet_name=sheet)
+        except zipfile.BadZipFile:
+            # corrupt cache file: download again
+            _Form930Base._refresh_references()
+            data = pd.read_excel(cache.pathname,sheet_name=sheet)
 
         _Form930Base.references[sheet] = data
         return data
@@ -256,7 +304,8 @@ class Form930(_Form930Base):
             as `"Aug"`; `None` accesses entire year; months before July 2015
             are omitted)
 
-          - `refresh`: force cache refresh
+          - `refresh`: force cache refresh (including the respondent
+            reference data)
 
         Raises
         ------
@@ -264,15 +313,16 @@ class Form930(_Form930Base):
           - `TypeError`: an argument has the wrong type, or `region` is
             missing
 
-          - `ValueError`: `region`, `year` or `month` is not valid
+          - `ValueError`: `region`, `year` or `month` is not valid, or the
+            month is in the future
         """
         year = check_year(year,self.FIRST_MONTH[0])
         month = check_month(month,optional=True)
-        self._check_respondent("region",region)
         refresh = check_bool("refresh",refresh)
+        self._check_respondent("region",region,refresh=refresh)
 
         result = []
-        for mon in _months(month):
+        for mon in _months(year,month):
             if (year,mon) < self.FIRST_MONTH:
                 continue
             data = self._cached("region-data",region,{"respondent":[region],"type":list(self.TYPES)},
@@ -337,18 +387,19 @@ class Form930Fuel(_Form930Base):
           - `TypeError`: an argument has the wrong type, or `respondent` is
             missing
 
-          - `ValueError`: `respondent`, `year` or `month` is not valid, or
-            no data is available before the first published month
+          - `ValueError`: `respondent`, `year` or `month` is not valid, the
+            month is in the future, or no data is available before the first
+            published month
         """
         year = check_year(year,self.FIRST_MONTH[0])
         month = check_month(month,optional=True)
-        self._check_respondent("respondent",respondent)
         refresh = check_bool("refresh",refresh)
+        self._check_respondent("respondent",respondent,refresh=refresh)
         if isinstance(fuels,str):
             fuels = [fuels]
 
         result = []
-        for mon in _months(month):
+        for mon in _months(year,month):
             if (year,mon) < self.FIRST_MONTH:
                 continue
             data = self._cached("fuel-type-data",respondent,{"respondent":[respondent]},
