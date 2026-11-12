@@ -56,6 +56,12 @@ class Form861m(FormBase):
     CACHEDIR = None
     """Folder in which downloaded files are cached (default is `{package}/.cache`)"""
 
+    FORM861M_URLS = [
+        "https://www.eia.gov/electricity/data/eia861m/archive/xls/small_scale_solar_{year}.xlsx",
+        "https://www.eia.gov/electricity/data/eia861m/xls/small_scale_solar_{year}.xlsx",
+        ]
+    """URLs to try for Form 861m workbooks (archived years, then recent years)"""
+
     def __init__(self,
         year:int|str,
         month:int|str,
@@ -97,23 +103,25 @@ class Form861m(FormBase):
             if self.CACHEDIR is None:
                 self.CACHEDIR = os.path.join(os.path.dirname(__file__),".cache")
             os.makedirs(self.CACHEDIR,exist_ok=True)
-            thisyear = dt.datetime.now().year
             cachefile = os.path.join(self.CACHEDIR,f"form861m_{year}.xlsx")
 
             # read data from network if necessary
             if refresh or not os.path.exists(cachefile):
-                filename = f"small_scale_solar_{year}.xlsx"
-                url = "https://www.eia.gov/electricity/data/eia861m/" \
-                    f"{'archive/' if year < thisyear else ''}xls/{filename}"
-                req = requests.get(url,timeout=10)
-                assert req.status_code == 200, \
-                    f"'{url}' not available (HTTP error {req.status_code})"
+                content = None
+                urls = [x.format(year=year) for x in self.FORM861M_URLS]
+                for url in urls:
+                    req = requests.get(url,timeout=10)
+                    if req.status_code == 200:
+                        content = req.content
+                        break
+                if content is None:
+                    raise RuntimeError(f"{year=} not found at any of {urls}")
                 with open(cachefile,"wb") as fh:
-                    fh.write(req.content)
+                    fh.write(content)
 
-            # load data from cache
+            # load workbook from cache
             try:
-                data = pd.read_excel(cachefile,
+                workbook = pd.read_excel(cachefile,
                     engine="openpyxl",
                     sheet_name="Monthly Totals- States",
                     skiprows=3,
@@ -124,16 +132,23 @@ class Form861m(FormBase):
                     # na_values = ["NM","."],
                     dtype = {"state":str},
                     index_col=[0,1],
-                    ).sort_index().loc[year,month].reset_index()
+                    ).sort_index()
             # pylint: disable=broad-exception-caught
             except Exception as err:
                 warnings.warn(f"unable to read {cachefile} ({err})--"\
-                    "deleting invalid cache file (try again later)")
-                data = None
-                os.unlink(cachefile)
+                    "deleting invalid cache file")
+                if os.path.exists(cachefile):
+                    os.unlink(cachefile)
+                raise RuntimeError(f"{cachefile=} is not valid") from err
 
-            if data is None:
-                raise RuntimeError(f"{cachefile=} is not valid")
+            # extract requested month
+            try:
+                data = workbook.loc[(year,month),:].reset_index()
+            except KeyError as err:
+                raise ValueError(f"{year=} {month=} is not available in {cachefile} "
+                    "(not yet published by EIA, or use refresh=True to "
+                    "download a newer workbook)") from err
+
             _cache[cache_key] = data.copy()
         else:
             data = _cache[cache_key].copy()
