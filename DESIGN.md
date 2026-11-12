@@ -103,6 +103,9 @@ missing from the rest, which is why the `region_hourly` CLI subcommand fails
   common `refresh`/`raw` handling.
 - `_period(year, month, first=(YYYY, M))` — coerces `str → int`, validates
   range against the form's first published month, raises `ValueError` (#12).
+  *Partly done (#14):* `eia.base.check_year()`/`check_month()` coerce and
+  validate the year range and month; checking `(year, month)` against the
+  first published month is still per form.
 - `_download(url | list[url], *, timeout, retries)` — one HTTP helper with a
   configurable timeout, status check, fallback across URL candidates, and
   redaction of `api_key` from error text (#13, #14).
@@ -238,9 +241,14 @@ comma-separated options (#9).
 
 ## 7. Errors and warnings
 
-**Current.** Validation uses `assert` (stripped by `python -O`); network
-failures surface as `AssertionError`, `RuntimeError`, `KeyError` or
-`UnboundLocalError` depending on the module (#6, #7, #12).
+**Current.** Argument validation no longer uses `assert` (#14). All forms
+coerce and validate arguments with the shared helpers in `eia.base`
+(`check_year`, `check_month`, `check_bool`, `check_choice`), which raise
+`TypeError` for a bad argument type and `ValueError` for a bad value or a
+year before the form's first published year; `str` years and month numbers,
+names or abbreviations are accepted by every form. Network failures still
+surface as `RuntimeError`, `KeyError` or `UnboundLocalError` depending on the
+module (#6, #7, #15).
 
 **Target.**
 

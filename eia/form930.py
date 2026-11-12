@@ -45,11 +45,10 @@ References
   - https://www.eia.gov/opendata/browser/electricity/rto
 """
 import os
-import datetime as dt
 import pandas as pd
 import requests
 
-from eia.base import FormBase, cache_entry
+from eia.base import FormBase, cache_entry, check_year, check_month, check_bool
 
 def _api_key() -> str:
     """@private Get the EIA API key"""
@@ -58,12 +57,10 @@ def _api_key() -> str:
     with open(os.path.join(os.environ["HOME"],".eia","api_key"),"r",encoding="utf-8") as fh:
         return fh.read().strip()
 
-def _months(month:int|None) -> list[int]:
+def _months(month:int|str|None) -> list[int]:
     """@private Get list of months to load"""
-    if month is None:
-        return list(range(1,13))
-    assert isinstance(month,int) and 1 <= month <= 12, f"{month=} is invalid"
-    return [month]
+    month = check_month(month,optional=True)
+    return list(range(1,13)) if month is None else [month]
 
 def _hours(year:int,month:int) -> pd.DatetimeIndex:
     """@private Get hour-beginning UTC timestamps for a month"""
@@ -140,6 +137,16 @@ class _Form930Base(FormBase):
     def _timestamp(period:pd.Series) -> pd.DatetimeIndex:
         """@private Convert API UTC hour-ending periods to hour-beginning timestamps"""
         return pd.DatetimeIndex(pd.to_datetime(period,format="%Y-%m-%dT%H",utc=True)) - pd.Timedelta(hours=1)
+
+    @classmethod
+    def _check_respondent(cls,name:str,value:str):
+        """@private Validate a respondent code argument"""
+        if not isinstance(value,str):
+            raise TypeError(f"{name} must be a str, not {type(value).__name__} "
+                "(`--region` on the command line)")
+        if value not in cls.respondents():
+            raise ValueError(f"{name}={value!r} is not a valid respondent code "
+                "(see `respondents()`)")
 
     @staticmethod
     def respondents() -> list[str]:
@@ -230,8 +237,8 @@ class Form930(_Form930Base):
 
     def __init__(self,
         region:str,
-        year:int,
-        month:int|None=None,
+        year:int|str,
+        month:int|str|None=None,
         *,
         refresh:bool=False,
         ):
@@ -243,16 +250,26 @@ class Form930(_Form930Base):
           - `region`: region or balancing authority code (see
             `eia.Form930.respondents()`)
 
-          - `year`: year of data
+          - `year`: year of data (2015 or later, as `int` or `str`)
 
-          - `month`: month of data (`None` accesses entire year)
+          - `month`: month of data (1 to 12, or a name or abbreviation such
+            as `"Aug"`; `None` accesses entire year; months before July 2015
+            are omitted)
 
           - `refresh`: force cache refresh
+
+        Raises
+        ------
+
+          - `TypeError`: an argument has the wrong type, or `region` is
+            missing
+
+          - `ValueError`: `region`, `year` or `month` is not valid
         """
-        assert isinstance(region,str), "region is required (`--region` on the command line)"
-        assert region in self.respondents(), f"{region=} is not valid"
-        assert isinstance(year,int) and self.FIRST_MONTH[0] <= year <= dt.datetime.now().year, \
-            f"{year=} is invalid"
+        year = check_year(year,self.FIRST_MONTH[0])
+        month = check_month(month,optional=True)
+        self._check_respondent("region",region)
+        refresh = check_bool("refresh",refresh)
 
         result = []
         for mon in _months(month):
@@ -290,8 +307,8 @@ class Form930Fuel(_Form930Base):
 
     def __init__(self,
         respondent:str,
-        year:int,
-        month:int|None=None,
+        year:int|str,
+        month:int|str|None=None,
         *,
         fuels:list[str]|None=None,
         refresh:bool=False,
@@ -304,19 +321,29 @@ class Form930Fuel(_Form930Base):
           - `respondent`: balancing authority or region code (see
             `eia.Form930Fuel.respondents()`)
 
-          - `year`: year of data (2018 or later)
+          - `year`: year of data (2018 or later, as `int` or `str`)
 
-          - `month`: month of data (`None` accesses entire year; months
-            before July 2018 are omitted)
+          - `month`: month of data (1 to 12, or a name or abbreviation such
+            as `"Aug"`; `None` accesses entire year; months before July 2018
+            are omitted)
 
           - `fuels`: energy source codes to include (`None` includes all)
 
           - `refresh`: force cache refresh
+
+        Raises
+        ------
+
+          - `TypeError`: an argument has the wrong type, or `respondent` is
+            missing
+
+          - `ValueError`: `respondent`, `year` or `month` is not valid, or
+            no data is available before the first published month
         """
-        assert isinstance(respondent,str), "respondent is required (`--region` on the command line)"
-        assert respondent in self.respondents(), f"{respondent=} is not valid"
-        assert isinstance(year,int) and self.FIRST_MONTH[0] <= year <= dt.datetime.now().year, \
-            f"{year=} is invalid"
+        year = check_year(year,self.FIRST_MONTH[0])
+        month = check_month(month,optional=True)
+        self._check_respondent("respondent",respondent)
+        refresh = check_bool("refresh",refresh)
         if isinstance(fuels,str):
             fuels = [fuels]
 

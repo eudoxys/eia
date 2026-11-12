@@ -9,10 +9,9 @@ References
   - https://www.eia.gov/electricity/data/eia861m/
 """
 
-import datetime as dt
 import numpy as np
 import pandas as pd
-from eia.base import FormBase, month_number, cache_entry
+from eia.base import FormBase, cache_entry, check_year, check_month, check_bool
 
 refresh=False
 
@@ -100,20 +99,15 @@ class HS861m(FormBase):
         Raises
         ------
 
+          - `TypeError`: an argument has the wrong type
+
           - `ValueError`: `year` or `month` is not valid, or no data is
             available for the selection
         """
-        if isinstance(year,str):
-            try:
-                year = int(year.strip())
-            except ValueError as err:
-                raise ValueError(f"{year=} is not a valid year") from err
-        if year is not None:
-            if not isinstance(year,int) or isinstance(year,bool) \
-                    or not 1990 <= year <= dt.datetime.now().year:
-                raise ValueError(f"{year=} is not a valid year")
-        if month is not None:
-            month = month_number(month)
+        year = check_year(year,1990,optional=True)
+        month = check_month(month,optional=True)
+        refresh = check_bool("refresh",refresh)
+        raw = check_bool("raw",raw)
 
         global _cache
         if _cache is not None and not refresh:

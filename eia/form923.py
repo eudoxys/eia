@@ -50,7 +50,7 @@ import calendar
 import requests
 import pandas as pd
 
-from eia.base import FormBase, cache_entry
+from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, check_choice
 
 class Form923(FormBase):
     """Form923 DataFrame
@@ -100,8 +100,8 @@ class Form923(FormBase):
     """@private grouping columns by aggregation level"""
 
     def __init__(self,
-        year:int,
-        month:int|None=None,
+        year:int|str,
+        month:int|str|None=None,
         states:list[str]|None=None,
         bas:list[str]|None=None,
         fuels:list[str]|None=None,
@@ -117,8 +117,9 @@ class Form923(FormBase):
 
         Arguments
         ---------
-        - `year`: year of query
-        - `month`: month to include (`None` returns entire year)
+        - `year`: year of query (2008 to present, as `int` or `str`)
+        - `month`: month to include (1 to 12, or a name or abbreviation such
+          as `"Aug"`; `None` returns entire year)
         - `states`: states to include (`None` returns all states found)
         - `bas`: balancing authorities to include (`None` returns all BAs found)
         - `fuels`: fuel types to include (`None` returns all fuel types found)
@@ -128,15 +129,23 @@ class Form923(FormBase):
         - `precision`: precision of cached data
         - `refresh`: force cache refresh
         - `nonzero`: drop zero and missing values (negative values are kept)
+
+        Raises
+        ------
+        - `TypeError`: an argument has the wrong type
+        - `ValueError`: `year`, `month` or `by` is not valid
         """
         # pylint: disable=too-many-arguments,too-many-locals,too-many-branches
 
         # check arguments
-        assert isinstance(year,int) and 2008 <= year <= dt.datetime.now().year, f"{year=} is not valid"
+        year = check_year(year,2008)
         if year >= dt.datetime.now().year-1:
             warn(f"{year=} may not be finalized yet")
-        assert by in self.INDEX, f"{by=} is not valid (must be one of {list(self.INDEX)})"
-        assert month is None or 1 <= month <= 12, f"{month=} is not valid"
+        month = check_month(month,optional=True)
+        check_choice("by",by,self.INDEX)
+        increments = check_bool("increments",increments)
+        refresh = check_bool("refresh",refresh)
+        nonzero = check_bool("nonzero",nonzero)
 
         # load plant-level data (cached)
         df = self._load(year,precision=precision,refresh=refresh)
