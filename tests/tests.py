@@ -198,6 +198,84 @@ def test_form861m():
             print(f"Form861m({year=},{month=}) ok.",file=sys.stderr,flush=True)
     return errors
 
+def _form861m_workbook(pathname,year,months):
+    """Write a minimal Form 861m workbook containing only the given months"""
+    import pandas as pd
+    rows = [["header"]*12]*4 + [[year,month,state,"E",1,2,3,6,10,20,30,60]
+        for month in months for state in ["CA","WA"]]
+    pd.DataFrame(rows).to_excel(pathname,
+        sheet_name="Monthly Totals- States",
+        index=False,
+        header=False,
+        )
+
+def test_form861m_cache():
+    """Test Form 861m cache handling without accessing EIA data"""
+    import tempfile
+    import warnings
+    from unittest import mock
+    import eia.form861m
+    errors = 0
+    saved = Form861m.CACHEDIR
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Form861m.CACHEDIR = tmpdir
+            eia.form861m._cache.clear()
+            cachefile = os.path.join(tmpdir,"form861m_2024.xlsx")
+
+            # month present in cached workbook
+            _form861m_workbook(cachefile,2024,[1,2])
+            data = Form861m(2024,2)
+            assert len(data) == 2, f"expected 2 rows, got {len(data)}"
+
+            # month not yet published keeps the valid cache file
+            try:
+                Form861m(2024,5)
+            except ValueError as err:
+                assert "month=5" in str(err), f"month missing from error: {err}"
+            else:
+                raise AssertionError("missing month did not raise ValueError")
+            assert os.path.exists(cachefile), "valid cache file was deleted"
+
+            # corrupt cache file is reported and deleted
+            eia.form861m._cache.clear()
+            with open(cachefile,"wb") as fh:
+                fh.write(b"not a workbook")
+            with warnings.catch_warnings(record=True):
+                warnings.simplefilter("always")
+                try:
+                    Form861m(2024,1)
+                except RuntimeError as err:
+                    assert cachefile in str(err), f"cache path missing from error: {err}"
+                else:
+                    raise AssertionError("corrupt cache file did not raise RuntimeError")
+            assert not os.path.exists(cachefile), "corrupt cache file was not deleted"
+
+            # download falls back to the next URL when the first is missing
+            good = os.path.join(tmpdir,"good.xlsx")
+            _form861m_workbook(good,2024,[3])
+            with open(good,"rb") as fh:
+                content = fh.read()
+            requested = []
+            def fake_get(url,**_):
+                requested.append(url)
+                ok = url == Form861m.FORM861M_URLS[1].format(year=2024)
+                return mock.Mock(status_code=200 if ok else 404,content=content)
+            with mock.patch("eia.form861m.requests.get",side_effect=fake_get):
+                data = Form861m(2024,3)
+            assert len(data) == 2, f"expected 2 rows, got {len(data)}"
+            assert len(requested) == 2, f"expected 2 URLs tried, got {requested}"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: Form861m cache --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("Form861m cache ok.",file=sys.stderr,flush=True)
+    finally:
+        Form861m.CACHEDIR = saved
+        eia.form861m._cache.clear()
+    return errors
+
 def test_hs861m():
     """Test HS 861m data frame"""
     errors = 0
