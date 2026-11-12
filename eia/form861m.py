@@ -24,10 +24,10 @@ class Form861m(FormBase):
     """The `Form861m` class is a Pandas data frame loaded with the EIA Form 861
     distributed/small scale solar data for US states starting in 2017.
 
-    The data frame includes the following columns.
+    The data frame has a default integer index, one row per state, and the
+    following columns.
 
-      - `date`: the primary index indicate the date on which the new values go
-        into effect.
+      - `date`: the first day of the requested month (UTC).
 
       - `state`: the state for which the values are in effect.
 
@@ -47,7 +47,12 @@ class Form861m(FormBase):
 
       - `tot_mwh`: the total energy production in megaWatts hours.
 
-    If the `raw` argument is `True`, the original EIA data is returned.
+    Missing and non-numeric values are set to `0.0`.
+
+    If the `raw` argument is `True`, the EIA rows for the requested month are
+    returned with a default integer index and the columns `year`, `month`,
+    `state`, `status`, and the capacity and energy columns above, without
+    cleanup.
     """
 
     # pylint: disable=invalid-name
@@ -79,8 +84,8 @@ class Form861m(FormBase):
           - `refresh`: refresh data cache (default `False`)
 
           - `raw`: disable data frame cleanup, i.e., don't set `NaN` values
-            to 0.0, construct the `date` index, or remove the `status`
-            column (default `False`)
+            to 0.0, construct the `date` column, or remove the `year`,
+            `month`, and `status` columns (default `False`)
 
         Raises
         ------
@@ -173,10 +178,12 @@ class Form861m(FormBase):
             data.reset_index(inplace=True)
             data.set_index(["date","state"],inplace=True)
             data.sort_index(inplace=True)
+            data.reset_index(inplace=True)
         else:
             data.month = data.month.astype(int)
             data.year = data.year.astype(int)
-        super().__init__(data.sort_index().reset_index())
+            data.reset_index(drop=True,inplace=True)
+        super().__init__(data)
 
 
 if __name__ == '__main__':

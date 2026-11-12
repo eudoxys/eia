@@ -432,6 +432,12 @@ def test_form861m_cache():
             _form861m_workbook(cachefile,2024,[1,2])
             data = Form861m(2024,2)
             assert len(data) == 2, f"expected 2 rows, got {len(data)}"
+            assert list(data.columns[:2]) == ["date","state"], \
+                f"unexpected columns {list(data.columns)}"
+            raw = Form861m(2024,2,raw=True)
+            assert "index" not in raw.columns, f"stray index column in {list(raw.columns)}"
+            assert list(raw.columns[:4]) == ["year","month","state","status"], \
+                f"unexpected raw columns {list(raw.columns)}"
 
             # month not yet published keeps the valid cache file
             try:
