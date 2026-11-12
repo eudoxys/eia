@@ -5,11 +5,14 @@ The `eia` package downloads and structures EIA form data for bulk power systems.
 Syntax
 ------
     
-    eia [-y YEAR] [-m MONTH] [-r|--region REGION] [--subset SUBSET] 
-        [-o|--output OUTPUT] [--raw] [--refresh] 
-        [-h|--help] [--warning] [--debug] 
+    eia [-y YEAR] [-m MONTH] [-r|--region REGION] [--subset SUBSET]
+        [--state STATES] [--ba BAS] [--fuel FUELS] [--plant PLANTS]
+        [--by {ba,plant}] [--no-increments]
+        [-o|--output OUTPUT] [--raw] [--refresh]
+        [-h|--help] [--warning] [--debug]
         [-f|--format {csv,gzip,zip,xlsx}]
-        {bulk_generation,customer_demand,distributed_generation,region_hourly,help}
+        {bulk_generation,customer_demand,distributed_generation,
+         generation_monthly,region_hourly,region_fuel_hourly,help}
 
 Positional arguments
 --------------------
@@ -20,7 +23,13 @@ Positional arguments
 
 - `distributed_generation`: EIA Form 861m non-bulk generation data
 
+- `generation_monthly`: EIA Form 923 monthly net generation by balancing
+  authority or by plant, prime mover, and fuel
+
 - `region_hourly`: EIA Form 930 hourly load, net generation, and interchange
+  by balancing authority or region (requires `--region`)
+
+- `region_fuel_hourly`: EIA Form 930 hourly net generation by energy source
   by balancing authority or region (requires `--region`)
 
 - `help`: get online help
@@ -42,7 +51,26 @@ Optional arguments
   e.g., `8`, `August`, or `aug`)
 
 - `-r REGION`, `--region REGION`, `--respondent REGION`: select region or
-  balancing authority (`region_hourly` only; see `eia.Form930.respondents()`)
+  balancing authority (`region_hourly` and `region_fuel_hourly`; see
+  `eia.Form930.respondents()`)
+
+- `--state STATES`, `--states STATES`: select states, comma separated
+  (`generation_monthly`)
+
+- `--ba BAS`, `--bas BAS`: select balancing authorities, comma separated
+  (`generation_monthly`)
+
+- `--fuel FUELS`, `--fuels FUELS`: select fuel or energy source codes, comma
+  separated (`generation_monthly` and `region_fuel_hourly`)
+
+- `--plant PLANTS`, `--plants PLANTS`: select EIA plant ids, comma separated
+  (`generation_monthly`)
+
+- `--by {ba,plant}`: aggregate by balancing authority (default) or by plant,
+  prime mover, and fuel (`generation_monthly`)
+
+- `--no-increments`: exclude EIA's state-fuel level increment estimates
+  (plant `99999`) (`generation_monthly`)
 
 - `--subset SUBSET`: data subset requested
 
@@ -71,9 +99,6 @@ Currently supported forms are
 
 - `eia.form930.Form930Fuel`: Hourly net generation by energy source by
   balancing authority or region (UTC, hour-beginning; July 2018 onward)
-
-Form 923 data and Form 930 data by energy source are currently available from
-Python only; the command line tool does not yet support them.
 
 Form 930 data are obtained from the EIA Open Data API, which requires an API
 key. Register at https://www.eia.gov/opendata/register.php, then store the key
@@ -113,6 +138,16 @@ Get the hourly load, net generation, and interchange for California in August
 2020 (Form 930)
 
     eia region_hourly --region CAL --year 2020 --month 8
+
+Get the August 2020 net generation from natural gas and hydro in the CAISO
+balancing authority (Form 923)
+
+    eia generation_monthly --year 2020 --month 8 --ba CISO --fuel NG,WAT
+
+Get the hourly net generation by energy source for the Bonneville Power
+Administration in August 2020 (Form 930)
+
+    eia region_fuel_hourly --region BPAT --year 2020 --month 8
 
 Python
 ------

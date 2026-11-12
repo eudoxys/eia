@@ -318,6 +318,7 @@ class Form930Fuel(_Form930Base):
 
           - `refresh`: force cache refresh
         """
+        assert isinstance(respondent,str), "respondent is required (`--region` on the command line)"
         assert respondent in self.respondents(), f"{respondent=} is not valid"
         assert isinstance(year,int) and self.FIRST_MONTH[0] <= year <= dt.datetime.now().year, \
             f"{year=} is invalid"

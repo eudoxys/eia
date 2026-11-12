@@ -34,6 +34,16 @@ Hourly load, net generation, and interchange for California in August 2020
 
     eia region_hourly --region CAL --year 2020 --month 8
 
+Monthly net generation from natural gas and hydro in the CAISO balancing
+authority for August 2020 (Form 923; add `--by plant` for plant-level data)
+
+    eia generation_monthly --year 2020 --month 8 --ba CISO --fuel NG,WAT
+
+Hourly net generation by energy source for the Bonneville Power
+Administration in August 2020 (Form 930)
+
+    eia region_fuel_hourly --region BPAT --year 2020 --month 8
+
 ### Python code
 
     from eia import Form861m
@@ -62,9 +72,6 @@ in August 2020 (Form 930)
 
     from eia import Form930Fuel
     Form930Fuel("BPAT",2020,8)
-
-Form 923 data and Form 930 data by energy source are currently available from
-Python only; the command line tool does not yet support them.
 
 ## Notes
 

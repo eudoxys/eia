@@ -8,7 +8,8 @@ import pandas as pd
 from eia import __doc__ as docs
 from eia.form861m import Form861m
 from eia.form860m import Form860m
-from eia.form930 import Form930
+from eia.form923 import Form923
+from eia.form930 import Form930, Form930Fuel
 from eia.hs861m import HS861m
 
 E_OK = 0
@@ -24,7 +25,9 @@ _FORMS = {
     "bulk_generation": Form860m,
     "customer_demand": HS861m,
     "distributed_generation": Form861m,
+    "generation_monthly": Form923,
     "region_hourly": Form930,
+    "region_fuel_hourly": Form930Fuel,
 }
 
 def main(*args:list[str]) -> int:
@@ -70,7 +73,27 @@ def main(*args:list[str]) -> int:
             help="select month (number, name, or abbreviation)")
         parser.add_argument("-r","--region","--respondent",
             dest="region",
-            help="select region or balancing authority (region_hourly)")
+            help="select region or balancing authority (region_hourly, region_fuel_hourly)")
+        parser.add_argument("--state","--states",
+            dest="states",
+            help="select states, comma separated (generation_monthly)")
+        parser.add_argument("--ba","--bas",
+            dest="bas",
+            help="select balancing authorities, comma separated (generation_monthly)")
+        parser.add_argument("--fuel","--fuels",
+            dest="fuels",
+            help="select fuel or energy source codes, comma separated "\
+                "(generation_monthly, region_fuel_hourly)")
+        parser.add_argument("--plant","--plants",
+            dest="plants",
+            help="select plant ids, comma separated (generation_monthly)")
+        parser.add_argument("--by",
+            choices=["ba","plant"],
+            help="aggregate by balancing authority (default) or plant (generation_monthly)")
+        parser.add_argument("--no-increments",
+            dest="increments",
+            action="store_false",
+            help="exclude state-fuel level increment estimates, plant 99999 (generation_monthly)")
         parser.add_argument("--subset",
             help="data subset requested")
         parser.add_argument("--warning",
@@ -103,6 +126,7 @@ def main(*args:list[str]) -> int:
         # get data
         form = _FORMS[args.form]
         kwargs = {x:getattr(args,x) for x in dir(args) if x[0] != "_" }
+        kwargs["respondent"] = args.region # Form930Fuel name for --region
         data = form(**form.makeargs(**kwargs))
 
         # handle default output

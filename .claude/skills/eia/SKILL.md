@@ -36,8 +36,8 @@ All classes import from the package root:
 from eia import Form860m, Form861m, HS861m, Form923, Form930, Form930Fuel
 ```
 
-Use the Python API rather than the `eia` command line for anything other
-than Form 861m (see *Command-line limitations* below).
+Every class is also available from the `eia` command line (see *Command
+line* below); use the Python API when you need the data frame itself.
 
 ## Class reference
 
@@ -161,28 +161,31 @@ local time with `df.timestamp.dt.tz_convert("America/Los_Angeles")`.
 - Pass `refresh=True` to re-download a period, for example after EIA
   revises the most recent months.
 
-## Command-line limitations (current release)
+## Command line
 
-The `eia` command accepts `bulk_generation`, `customer_demand`,
-`distributed_generation`, `region_hourly` and `help`, with `-y`, `-m`,
-`--subset`, `--raw`, `--refresh`, `-o OUTPUT` and
-`-f {csv,gzip,zip,xlsx}`. Known defects:
+The `eia` command takes a subcommand and shared options; each form uses only
+the options it accepts and ignores the rest.
 
-- `bulk_generation` maps to `Form861m`, not `Form860m`; it returns
-  small-scale solar data.
-- `region_hourly` fails with `'Form930' has no attribute 'makeargs'`.
-- Form 923 and `Form930Fuel` have no command-line entry.
-- `customer_demand` fails when `-m` is given: the CLI passes the month as a
-  string and `HS861m` does not convert it
-  (`ValueError: Unknown format code 'd' for object of type 'str'`).
-  Use `HS861m(2022, 7)` from Python instead.
-- `.xlsx` output always uses the sheet name `Form861`.
+| Subcommand | Class | Form-specific options |
+|---|---|---|
+| `bulk_generation` | `Form860m` | `--subset` |
+| `distributed_generation` | `Form861m` | |
+| `customer_demand` | `HS861m` | |
+| `generation_monthly` | `Form923` | `--state`, `--ba`, `--fuel`, `--plant`, `--by {ba,plant}`, `--no-increments` |
+| `region_hourly` | `Form930` | `-r/--region` (required) |
+| `region_fuel_hourly` | `Form930Fuel` | `-r/--region` (required), `--fuel` |
 
-`distributed_generation` operates correctly:
+Common options: `-y YEAR`, `-m MONTH` (number, name, or abbreviation),
+`--raw`, `--refresh`, `-o OUTPUT`, `-f {csv,gzip,zip,xlsx}`. List options
+take comma-separated values, e.g. `--fuel NG,WAT` or `--plant 6099,286`.
 
 ```bash
 eia distributed_generation -y 2020 -m 8 -o dg_2020_08.csv
+eia generation_monthly -y 2020 -m 8 --ba CISO --fuel NG,WAT
+eia region_fuel_hourly --region BPAT -y 2020 -m 8
 ```
+
+Known limitation: `.xlsx` output always uses the sheet name `Form861`.
 
 ## Troubleshooting
 

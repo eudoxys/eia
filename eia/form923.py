@@ -133,7 +133,7 @@ class Form923(FormBase):
         # pylint: disable=too-many-arguments,too-many-locals,too-many-branches
 
         # check arguments
-        assert 2008 <= year <= dt.datetime.now().year, f"{year=} is not valid"
+        assert isinstance(year,int) and 2008 <= year <= dt.datetime.now().year, f"{year=} is not valid"
         if year >= dt.datetime.now().year-1:
             warn(f"{year=} may not be finalized yet")
         assert by in self.INDEX, f"{by=} is not valid (must be one of {list(self.INDEX)})"
