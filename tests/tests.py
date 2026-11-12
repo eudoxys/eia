@@ -9,6 +9,7 @@ from eia.form861m import Form861m
 from eia.hs861m import HS861m
 from eia import cli
 from eia.base import month_number
+import eia.base
 
 def test_cli_forms():
     """Test CLI subcommands map to the correct form class"""
@@ -352,11 +353,12 @@ def test_form860m_badcache():
     import tempfile
     import warnings
     errors = 0
-    saved = Form860m.CACHEDIR
+    saved = eia.base._cache_dir
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            Form860m.CACHEDIR = tmpdir
-            cachefile = os.path.join(tmpdir,"form860_2020_08.xlsx")
+            eia.base.set_cache_dir(tmpdir)
+            cachefile = os.path.join(tmpdir,"eia","1","form860m","2020-08.xlsx")
+            os.makedirs(os.path.dirname(cachefile))
             with open(cachefile,"wb") as fh:
                 fh.write(b"not a workbook")
             with warnings.catch_warnings(record=True) as caught:
@@ -379,7 +381,7 @@ def test_form860m_badcache():
     else:
         print("Form860m bad cache ok.",file=sys.stderr,flush=True)
     finally:
-        Form860m.CACHEDIR = saved
+        eia.base._cache_dir = saved
     return errors
 
 def test_form861m():
@@ -417,12 +419,13 @@ def test_form861m_cache():
     from unittest import mock
     import eia.form861m
     errors = 0
-    saved = Form861m.CACHEDIR
+    saved = eia.base._cache_dir
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            Form861m.CACHEDIR = tmpdir
+            eia.base.set_cache_dir(tmpdir)
             eia.form861m._cache.clear()
-            cachefile = os.path.join(tmpdir,"form861m_2024.xlsx")
+            cachefile = os.path.join(tmpdir,"eia","1","form861m","2024.xlsx")
+            os.makedirs(os.path.dirname(cachefile))
 
             # month present in cached workbook
             _form861m_workbook(cachefile,2024,[1,2])
@@ -473,7 +476,7 @@ def test_form861m_cache():
     else:
         print("Form861m cache ok.",file=sys.stderr,flush=True)
     finally:
-        Form861m.CACHEDIR = saved
+        eia.base._cache_dir = saved
         eia.form861m._cache.clear()
     return errors
 
@@ -531,13 +534,13 @@ def test_hs861m_args():
     return errors
 
 def test_hs861m_cachedir():
-    """Test HS 861m honours CACHEDIR without accessing EIA data"""
+    """Test HS 861m uses the eia cache folder without accessing EIA data"""
     import tempfile
     import pandas as pd
     import eia.hs861m as hs861m
     from cache import Cache
     errors = 0
-    saved = (hs861m._cache,HS861m.CACHEDIR,Cache.CACHEDIR)
+    saved = (hs861m._cache,eia.base._cache_dir,Cache.CACHEDIR)
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             pathname = os.path.join(tmpdir,"eia","0","hs861m.csv")
@@ -545,18 +548,64 @@ def test_hs861m_cachedir():
             pd.DataFrame([{"year":2022,"month":8,"state":"CA","status":"Final",
                 "tot_energy_mwh":1.0}]).to_csv(pathname,index=False)
             hs861m._cache = None
-            HS861m.CACHEDIR = tmpdir
+            eia.base.set_cache_dir(tmpdir)
             data = HS861m(2022,8)
-            assert len(data) == 1, f"cache file in CACHEDIR not used ({len(data)=})"
+            assert len(data) == 1, f"cache file in cache folder not used ({len(data)=})"
             assert Cache.CACHEDIR == saved[2], "default Cache.CACHEDIR was changed"
     except Exception as err:
-        print(f"ERROR [eia.tests]: HS861m CACHEDIR --> {err}",file=sys.stderr,flush=True)
+        print(f"ERROR [eia.tests]: HS861m cache folder --> {err}",file=sys.stderr,flush=True)
         errors += 1
         raise
     else:
-        print("HS861m CACHEDIR ok.",file=sys.stderr,flush=True)
+        print("HS861m cache folder ok.",file=sys.stderr,flush=True)
     finally:
-        hs861m._cache,HS861m.CACHEDIR,Cache.CACHEDIR = saved
+        hs861m._cache = saved[0]
+        eia.base._cache_dir = saved[1]
+        Cache.CACHEDIR = saved[2]
+    return errors
+
+def test_cache_dir():
+    """Test cache folder selection without accessing EIA data"""
+    import tempfile
+    from unittest import mock
+    import eia as package
+    errors = 0
+    saved = eia.base._cache_dir
+    try:
+        package_dir = os.path.dirname(os.path.abspath(eia.base.__file__))
+        with mock.patch.dict(os.environ,{},clear=False):
+            os.environ.pop(eia.base.CACHE_ENV,None)
+            default = eia.base.cache_dir()
+            assert not os.path.abspath(default).startswith(package_dir), \
+                f"default cache folder {default} is inside the package"
+            assert os.path.basename(default.rstrip(os.sep)) in ("eudoxys","Cache"), \
+                f"default cache folder {default} is not the eudoxys user cache folder"
+            with tempfile.TemporaryDirectory() as envdir, tempfile.TemporaryDirectory() as setdir:
+                os.environ[eia.base.CACHE_ENV] = envdir
+                assert eia.base.cache_dir() == os.path.abspath(envdir), "EIA_CACHE_DIR ignored"
+                entry = eia.base.cache_entry("form923","2020.csv.gz",version=1)
+                assert entry.pathname == os.path.join(envdir,"eia","1","form923","2020.csv.gz"), \
+                    f"unexpected cache path {entry.pathname}"
+                assert os.path.isdir(entry.dirname), "cache entry folder not created"
+                assert package.set_cache_dir(setdir) == os.path.abspath(envdir), "previous folder not returned"
+                assert package.cache_dir() == os.path.abspath(setdir), "set_cache_dir() ignored"
+                entry = eia.base.cache_entry("hs861m.csv",version=0)
+                assert entry.pathname.startswith(os.path.join(setdir,"eia","0")), \
+                    f"set_cache_dir() not used by cache entries ({entry.pathname})"
+                with open(entry.pathname,"w",encoding="utf-8") as fh:
+                    fh.write("x")
+                package.clear_cache()
+                assert not os.path.exists(os.path.join(setdir,"eia")), "clear_cache() left files"
+                package.set_cache_dir(None)
+                assert package.cache_dir() == os.path.abspath(envdir), "set_cache_dir(None) did not restore default"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: cache folder --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("cache folder ok.",file=sys.stderr,flush=True)
+    finally:
+        eia.base._cache_dir = saved
     return errors
 
 def test_form923():

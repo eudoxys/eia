@@ -112,30 +112,30 @@ missing from the rest, which is why the `region_hourly` CLI subcommand fails
 
 ### 4.1 Current state
 
-Two mechanisms coexist (#11):
+All forms use `cache.Cache` through `eia.base.cache_entry()`, rooted at
+`eia.cache_dir()` (#13):
 
 | Form | Mechanism | Location | Granularity | Invalidation |
 |---|---|---|---|---|
-| `Form860m` | hand-rolled files | `{site-packages}/eia/.cache/` | raw workbook per month + `.csv.gz` per subset | `refresh=True`; deletes workbook on `BadZipFile` |
-| `Form861m` | hand-rolled files + module dict | `{site-packages}/eia/.cache/` | raw workbook per year; in-process dict per month | `refresh=True`; deletes workbook on *any* read error, including an unpublished month (#8) |
-| `HS861m` | `cache.Cache(version=0)` + module global | `cache` package dir | one CSV for all years; in-process copy | `refresh=True` (but the in-process copy ignores it) |
-| `Form923` | `cache.Cache(version=1)` | `cache` package dir | normalised `.csv.gz` per year | `refresh=True`; regenerated on read error |
-| `Form930*` | `cache.Cache(version=1)` | `cache` package dir | raw API rows `.csv.gz` per respondent × month | `refresh=True`; regenerated on read error |
-| Form 930 reference tables | `cache.Cache(version=0)` + class dict | `cache` package dir | one CSV per sheet | never (ignores `refresh`) |
+| `Form860m` | `cache_entry(version=1)` | `{cache_dir}/eia/1/form860m/` | raw workbook per month + `.csv.gz` per subset | `refresh=True`; deletes workbook on `BadZipFile` |
+| `Form861m` | `cache_entry(version=1)` + module dict | `{cache_dir}/eia/1/form861m/` | raw workbook per year; in-process dict per month | `refresh=True`; deletes workbook on *any* read error, including an unpublished month (#8) |
+| `HS861m` | `cache_entry(version=0)` + module global | `{cache_dir}/eia/0/` | one CSV for all years; in-process copy | `refresh=True` (but the in-process copy ignores it) |
+| `Form923` | `cache_entry(version=1)` | `{cache_dir}/eia/1/form923/` | normalised `.csv.gz` per year | `refresh=True`; regenerated on read error |
+| `Form930*` | `cache_entry(version=1)` | `{cache_dir}/eia/1/form930/` | raw API rows `.csv.gz` per respondent × month | `refresh=True`; regenerated on read error |
+| Form 930 reference tables | `cache_entry(version=0)` + class dict | `{cache_dir}/eia/0/reference/` | one CSV per sheet | never (ignores `refresh`) |
 
-Note that `cache.Cache.CACHEDIR` itself defaults to
-`os.path.dirname(cache.__file__)/.cache`, i.e. inside the `cache` package's
-install directory. Moving `Form860m`/`Form861m` onto `cache` therefore does
-not by itself fix the read-only `site-packages` problem; the default has to
-change in `cache` or be overridden by `eia`.
+`cache_dir` is the folder set by `eia.set_cache_dir()`, else
+`$EIA_CACHE_DIR`, else `platformdirs.user_cache_dir("eudoxys")`. `eia` uses a
+`cache.Cache` subclass rooted there, so the `cache` package's own default
+(inside its install directory) is neither used nor changed. There are no
+per-class `CACHEDIR` attributes. `eia.clear_cache()` deletes
+`{cache_dir}/eia`.
 
 ### 4.2 Target
 
 - **One mechanism.** All forms use `cache.Cache(package="eia", version=N, ...)`.
-- **Location.** Default to the platform user-cache directory
-  (`platformdirs.user_cache_dir("eia")` or equivalent), overridable with the
-  `EIA_CACHE_DIR` environment variable and a single `eia.set_cache_dir()`
-  call. No per-class `CACHEDIR` attributes.
+- **Location.** Done (#13): platform user-cache directory, overridable with
+  `EIA_CACHE_DIR` and `eia.set_cache_dir()`.
 - **What is cached.** Cache the smallest *normalised* artefact that still
   serves every request option (as `Form923` already does), plus the raw file
   only when `raw=True` must reproduce EIA's original columns. Cached files are
@@ -148,8 +148,10 @@ change in `cache` or be overridden by `eia`.
 - **Reference data** honours `refresh` and has a maximum age.
 - **In-process memoisation** is optional, keyed by the full argument tuple,
   and always bypassed by `refresh=True`.
-- **User control.** Document `cache clear --package eia` and `cache size`
-  in the README.
+- **User control.** Done (#13): `eia.cache_dir()` and `eia.clear_cache()`
+  are documented in the README. (`cache clear --package eia` is not
+  recommended: the `cache` CLI defaults to its own folder and passes the
+  package name where `Cache.clear()` expects a list.)
 
 ## 5. Public API conventions
 

@@ -207,6 +207,30 @@ source, e.g., `NG_MW`, `NUC_MW`, `WAT_MW`, `WND_MW`)
     from eia import Form930Fuel
     Form930Fuel("BPAT",2020,8)
 
+Caching
+-------
+
+Downloaded data are cached so that repeated requests do not access EIA
+again. Pass `refresh=True` (or `--refresh` on the command line) to download
+again, e.g., after EIA revises recent months.
+
+Cache files are stored under `{cache_dir}/eia/{version}/`, never inside the
+installed package. The cache folder is, in order of precedence, the folder
+given to `eia.set_cache_dir()`, the environment variable `EIA_CACHE_DIR`, or
+the platform user cache folder (`~/.cache/eudoxys` on Linux,
+`~/Library/Caches/eudoxys` on macOS, `%LOCALAPPDATA%\\eudoxys\\Cache` on
+Windows). Use `eia.cache_dir()` to find it and `eia.clear_cache()` to delete
+all cached `eia` data, e.g.,
+
+    import eia
+    print(eia.cache_dir())
+    eia.set_cache_dir("/data/eia-cache")
+    eia.clear_cache()
+
+or on the command line
+
+    EIA_CACHE_DIR=/data/eia-cache eia generation_monthly -y 2020 -m 8
+
 Package information
 -------------------
 
@@ -223,6 +247,7 @@ Package information
     - [pandas](https://pypi.org/project/pandas/)
     - [openpyxl](https://pypi.org/project/openpyxl/)
     - [requests](https://pypi.org/project/requests/)
+    - [platformdirs](https://pypi.org/project/platformdirs/)
     - [cache](https://github.com/eudoxys/cache)
 """
 from eia.cli import main
@@ -231,3 +256,4 @@ from eia.form861m import Form861m
 from eia.form930 import Form930, Form930Fuel
 from eia.form923 import Form923
 from eia.hs861m import HS861m
+from eia.base import cache_dir, set_cache_dir, clear_cache

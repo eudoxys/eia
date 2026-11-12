@@ -1,4 +1,5 @@
 pandas
 openpyxl
 requests
+platformdirs
 cache @ git+https://github.com/eudoxys/cache

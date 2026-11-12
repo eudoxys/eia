@@ -50,8 +50,7 @@ import calendar
 import requests
 import pandas as pd
 
-from cache import Cache
-from eia.base import FormBase
+from eia.base import FormBase, cache_entry
 
 class Form923(FormBase):
     """Form923 DataFrame
@@ -184,11 +183,7 @@ class Form923(FormBase):
         Returns a data frame with columns `PLANT`, `NAME`, `STATE`, `BA`, `PM`,
         `FUEL`, and one column per month named `YYYY-MM`.
         """
-        cache = Cache(
-            package="eia",
-            version=1,
-            path=["form923",f"{year}.csv.gz"],
-            )
+        cache = cache_entry("form923",f"{year}.csv.gz",version=1)
         if cache.exists() and not refresh:
             try:
                 return pd.read_csv(cache.pathname,

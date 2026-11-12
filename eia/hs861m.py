@@ -12,8 +12,7 @@ References
 import datetime as dt
 import numpy as np
 import pandas as pd
-from cache import Cache
-from eia.base import FormBase, month_number
+from eia.base import FormBase, month_number, cache_entry
 
 refresh=False
 
@@ -21,8 +20,6 @@ _cache = None
 
 class HS861m(FormBase):
     """Form 861m customer data frame"""
-
-    CACHEDIR = None
 
     SOURCE = "https://www.eia.gov/electricity/data/eia861m/xls/sales_revenue.xlsx"
     """The `HS861m` class is a Pandas data frame loaded with the EIA Form 861
@@ -122,13 +119,7 @@ class HS861m(FormBase):
         if _cache is not None and not refresh:
             data = _cache.copy()
         else:
-            if self.CACHEDIR:
-                # use a cache folder for this class without changing the
-                # default folder of other `Cache` users
-                cache_class = type("HS861mCache",(Cache,),{"CACHEDIR":self.CACHEDIR})
-            else:
-                cache_class = Cache
-            cache = cache_class(package="eia",version=0,path=["hs861m.csv"])
+            cache = cache_entry("hs861m.csv",version=0)
             if cache.exists() and not refresh:
                 data = pd.read_csv(cache.pathname)
             else:

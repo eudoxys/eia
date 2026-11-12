@@ -17,7 +17,7 @@ import datetime as dt
 import warnings
 import pandas as pd
 import requests
-from eia.base import FormBase, month_number
+from eia.base import FormBase, month_number, cache_entry
 
 _cache = {}
 
@@ -52,8 +52,8 @@ class Form861m(FormBase):
     """
 
     # pylint: disable=invalid-name
-    CACHEDIR = None
-    """Folder in which downloaded files are cached (default is `{package}/.cache`)"""
+    CACHE_VERSION = 1
+    """@private Cache schema version (see `eia.base.cache_entry()`)"""
 
     FORM861M_URLS = [
         "https://www.eia.gov/electricity/data/eia861m/archive/xls/small_scale_solar_{year}.xlsx",
@@ -99,10 +99,8 @@ class Form861m(FormBase):
         if not cache_key in _cache or refresh:
 
             # download data from EIA
-            if self.CACHEDIR is None:
-                self.CACHEDIR = os.path.join(os.path.dirname(__file__),".cache")
-            os.makedirs(self.CACHEDIR,exist_ok=True)
-            cachefile = os.path.join(self.CACHEDIR,f"form861m_{year}.xlsx")
+            cachefile = cache_entry("form861m",f"{year}.xlsx",
+                version=self.CACHE_VERSION).pathname
 
             # read data from network if necessary
             if refresh or not os.path.exists(cachefile):
