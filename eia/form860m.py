@@ -149,20 +149,20 @@ class Form860m(FormBase):
             self.CACHEDIR = os.path.join(os.path.dirname(__file__),".cache")
         os.makedirs(self.CACHEDIR,exist_ok=True)
         cachefile = os.path.join(self.CACHEDIR,f"form860_{year}_{month:02d}.xlsx")
-        data = None # indicates no data yet
+        month_str = dt.date(year,month,1).strftime("%B").lower()
+        url = "https://www.eia.gov/electricity/data/eia860m/"\
+            f"archive/xls/{month_str}_generator{year}.xlsx"
+        source = f"cached copy of {url}"
         try:
             if refresh or not os.path.exists(cachefile):
 
                 # download data from EIA
-                month_str = dt.date(year,month,1).strftime("%B").lower()
-                url = "https://www.eia.gov/electricity/data/eia860m/"\
-                    f"archive/xls/{month_str}_generator{year}.xlsx"
                 req = requests.get(url,timeout=10)
                 assert req.status_code == 200, \
                     f"'{url}' not available (HTTP error {req.status_code})"
                 with open(cachefile,"wb") as fh:
                     fh.write(req.content)
-                data = {} # indicates data is now cached but not loaded
+                source = f"downloaded from {url}"
 
             # read from cache
             subsetfile = f"{cachefile.replace('.xlsx',f'_{subset.lower()}.csv.gz')}"
@@ -187,15 +187,12 @@ class Form860m(FormBase):
 
         except zipfile.BadZipFile as err:
 
-            if isinstance(data,dict) and not data:
-                warnings.warn(f"unable to read {cachefile} ({err})--"\
-                    "deleting invalid cache file (try again later)")
-
-            os.unlink(cachefile)
-            data = None
-
-        if data is None:
-            raise RuntimeError(f"{url=} is not valid")
+            warnings.warn(f"unable to read {cachefile} ({source}: {err})--"\
+                "deleting invalid cache file")
+            if os.path.exists(cachefile):
+                os.unlink(cachefile)
+            raise RuntimeError(f"{cachefile} ({source}) is not a valid "\
+                "workbook and was deleted (try again later)") from err
 
         if not raw:
             data.drop([x for x in data.columns if x not in self.COLUMNS],inplace=True,axis=1)
