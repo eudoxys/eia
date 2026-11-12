@@ -1,9 +1,6 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools.package-data]
-eia = ["*.py"]
 
 [tool.setuptools.dynamic]
 dependencies = {file=["requirements.txt"]}
@@ -13,20 +10,25 @@ name = "eia"
 version = "0.0.1"
 description = "EIA Form data accessor"
 authors = [
-    {name = "David P. Chassin <dchassin@eudoxys.com>"},
+    {name = "David P. Chassin", email = "dchassin@eudoxys.com"},
     ]
 maintainers = [
-    {name = "David P. Chassin <dchassin@eudoxys.com>"},
+    {name = "David P. Chassin", email = "dchassin@eudoxys.com"},
     ]
 readme = "README.md"
 requires-python = ">= 3.11"
-keywords = ["github","python","EIA","Form"]
-license = {text="MIT License"}
+keywords = ["python", "EIA", "Form", "energy", "electricity"]
+license = "MIT"
+license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries",
     ]
 dynamic=["dependencies"]
