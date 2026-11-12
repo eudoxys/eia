@@ -8,6 +8,7 @@ from eia.form930 import Form930, Form930Fuel
 from eia.form861m import Form861m
 from eia.hs861m import HS861m
 from eia import cli
+from eia.base import month_number
 
 def test_cli_forms():
     """Test CLI subcommands map to the correct form class"""
@@ -67,6 +68,16 @@ def test_makeargs():
         args = Form860m.makeargs(**options)
         assert args["year"] == 2020 and args["month"] == 8, f"Form860m got {args=}"
         assert Form930.makeargs(month=None)["month"] is None, "month=None was not kept"
+        for text,number in [("August",8),("aug",8),("Sept",9),("sep.",9),("MAY",5),("12",12)]:
+            assert month_number(text) == number, f"month_number({text!r}) is not {number}"
+            assert Form930.makeargs(month=text)["month"] == number, f"makeargs(month={text!r}) is not {number}"
+        for text in ["ju","jux","13","0",""]:
+            try:
+                month_number(text)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"month_number({text!r}) was accepted")
         try:
             Form930.makeargs(year="last")
         except ValueError:
@@ -101,7 +112,7 @@ def test_cli_region_hourly():
             try:
                 codes = [
                     cli.main("region_hourly","--region","CAL","-y","2020","-m","8"),
-                    cli.main("region_hourly","--respondent","CAL","-y","2020","-m","8"),
+                    cli.main("region_hourly","--respondent","CAL","-y","2020","-m","Aug"),
                     ]
             finally:
                 sys.stdout = stdout

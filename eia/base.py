@@ -8,6 +8,38 @@ import types
 import typing
 import pandas as pd
 
+MONTHS = ["january","february","march","april","may","june",
+    "july","august","september","october","november","december"]
+"""@private English month names (locale independent)"""
+
+def month_number(month:int|str) -> int:
+    """Convert a month to its number
+
+    Arguments
+    ---------
+
+      - `month`: month number (`1` to `12`, as `int` or `str`), name
+        (e.g., `"August"`), or abbreviation of at least three letters
+        (e.g., `"Aug"`, `"Sept"`); names are not case sensitive
+
+    Returns
+    -------
+
+      - `int`: month number (1 to 12)
+    """
+    if isinstance(month,str):
+        text = month.strip().lower().rstrip(".")
+        if text.isdigit():
+            month = int(text)
+        else:
+            found = [n for n,x in enumerate(MONTHS,1) if len(text) >= 3 and x.startswith(text)]
+            if len(found) != 1:
+                raise ValueError(f"{month=} is not a valid month")
+            return found[0]
+    if not isinstance(month,int) or isinstance(month,bool) or not 1 <= month <= 12:
+        raise ValueError(f"{month=} is not a valid month")
+    return month
+
 class FormBase(pd.DataFrame):
     """Base class for EIA form data frames"""
 
@@ -33,14 +65,18 @@ class FormBase(pd.DataFrame):
         -------
 
           - `dict`: arguments accepted by the constructor; string values of
-            arguments annotated as `int` are converted to `int`
+            arguments annotated as `int` are converted to `int`, and `month`
+            may be given as a name or abbreviation (see
+            `eia.base.month_number()`)
         """
         annotations = cls.__init__.__annotations__
         result = {}
         for name,value in kwargs.items():
             if name not in annotations or name == "return":
                 continue
-            if isinstance(value,str) and cls._accepts_int(annotations[name]):
+            if name == "month" and isinstance(value,str):
+                value = month_number(value)
+            elif isinstance(value,str) and cls._accepts_int(annotations[name]):
                 try:
                     value = int(value)
                 except ValueError as err:

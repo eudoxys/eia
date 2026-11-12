@@ -38,7 +38,8 @@ Optional arguments
 
 - `-y YEAR`, `--year YEAR`: select year
 
-- `-m MONTH`, `--month MONTH`: select month
+- `-m MONTH`, `--month MONTH`: select month (number, name, or abbreviation,
+  e.g., `8`, `August`, or `aug`)
 
 - `-r REGION`, `--region REGION`, `--respondent REGION`: select region or
   balancing authority (`region_hourly` only; see `eia.Form930.respondents()`)

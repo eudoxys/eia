@@ -18,7 +18,7 @@ import pytz
 import warnings
 import pandas as pd
 import requests
-from eia.base import FormBase
+from eia.base import FormBase, month_number
 
 _cache = {}
 
@@ -69,7 +69,8 @@ class Form861m(FormBase):
 
           - `year`: specifies the year (2017 to present)
 
-          - `month`: specifies the month (1 to 12)
+          - `month`: specifies the month (1 to 12, or a name or abbreviation
+            such as `"August"` or `"Aug"`)
 
           - `refresh`: refresh data cache (default `False`)
 
@@ -84,7 +85,7 @@ class Form861m(FormBase):
         assert 2017 <= year <= dt.datetime.now().year, f"{year=} is not valid"
 
         if isinstance(month,str):
-            month = int(month)
+            month = month_number(month)
         assert isinstance(month,int), f"{type(month)=} is not valid"
         assert 1 <= month <= 12, f"{month=} is not valid"
 
