@@ -78,7 +78,10 @@ Optional arguments
 
 - `--debug`: enable debug traceback on exceptions
 
-- `-f|--format {csv,gzip,zip,xlsx}`: specify output format
+- `-f|--format {csv,gzip,zip,xlsx}`: specify output format; takes precedence
+  over the `--output` file name extension, which otherwise sets the format
+  (`.csv`, `.csv.gz`, `.csv.zip`, or `.xlsx`); without `--output`, only `csv`
+  is allowed and is written to standard output
 
 Supported forms
 ---------------

@@ -21,6 +21,14 @@ E_FAILED = 1
 E_SYNTAX = 2
 """Exit code on syntax error"""
 
+_EXTENSIONS = {
+    ".csv": "csv",
+    ".csv.gz": "gzip",
+    ".csv.zip": "zip",
+    ".xlsx": "xlsx",
+}
+"""Output formats inferred from output file name extensions"""
+
 _FORMS = {
     "bulk_generation": Form860m,
     "customer_demand": HS861m,
@@ -30,13 +38,48 @@ _FORMS = {
     "region_fuel_hourly": Form930Fuel,
 }
 
-def main(*args:list[str]) -> int:
+def output_format(output:str|None,fmt:str|None=None) -> str|None:
+    """Get the output format for an output file name
+
+    Arguments
+    ---------
+
+      - `output`: output file name (`None` for standard output)
+
+      - `fmt`: output format from `--format` (`None` to infer from the
+        `output` file name extension)
+
+    Returns
+    -------
+
+      - `str|None`: output format (`csv`, `gzip`, `zip`, or `xlsx`), or
+        `None` for the default table display on standard output
+
+    Raises
+    ------
+
+      - `ValueError`: the format cannot be written to standard output, or
+        cannot be inferred from the file name extension
+    """
+    if output is None:
+        if fmt not in (None,"csv"):
+            raise ValueError(f"output format '{fmt}' requires an output file name (--output)")
+        return fmt
+    if fmt is not None:
+        return fmt
+    for extension,result in _EXTENSIONS.items():
+        if output.endswith(extension):
+            return result
+    raise ValueError(f"cannot infer output format from '{output}' "\
+        f"(use --format or one of {', '.join(_EXTENSIONS)})")
+
+def main(*args:str) -> int:
     """EIA form accessor main command line processor
 
     Arguments
     ---------
 
-      - `*args`: command line arguments (`None` is `sys.argv`)
+      - `*args`: command line arguments (none uses `sys.argv`)
 
     Returns
     -------
@@ -44,11 +87,8 @@ def main(*args:list[str]) -> int:
       - `int`: return/exit code
     """
     # pylint: disable=too-many-return-statements
+    options = None
     try:
-
-        # support direct call to main
-        if args:
-            sys.argv = [__file__] + list(args)
 
         # setup command line parser
         parser = argparse.ArgumentParser(
@@ -104,13 +144,13 @@ def main(*args:list[str]) -> int:
             help="enable debug traceback on exceptions")
         parser.add_argument("-f","--format",
             choices=["csv","gzip","zip","xlsx"],
-            help="specify output format")
+            help="specify output format (default from --output extension)")
 
-        # parse arguments
-        args = parser.parse_args()
+        # parse arguments (support direct call to main)
+        options = parser.parse_args(list(args) if args else None)
 
         # setup warning handling
-        if not args.warning:
+        if not options.warning:
             warnings.showwarning = lambda *x:print(
                 f"WARNING [{__package__}]:",
                 x[0],
@@ -119,18 +159,21 @@ def main(*args:list[str]) -> int:
                 )
 
         # handle help request
-        if args.form == "help":
+        if options.form == "help":
             print(docs)
             return E_OK
 
+        # check output format before accessing data
+        fmt = output_format(options.output,options.format)
+
         # get data
-        form = _FORMS[args.form]
-        kwargs = {x:getattr(args,x) for x in dir(args) if x[0] != "_" }
-        kwargs["respondent"] = args.region # Form930Fuel name for --region
+        form = _FORMS[options.form]
+        kwargs = {x:getattr(options,x) for x in dir(options) if x[0] != "_" }
+        kwargs["respondent"] = options.region # Form930Fuel name for --region
         data = form(**form.makeargs(**kwargs))
 
         # handle default output
-        if args.output is None:
+        if fmt is None:
             pd.options.display.max_rows = None
             pd.options.display.width = None
             pd.options.display.max_columns = None
@@ -138,34 +181,26 @@ def main(*args:list[str]) -> int:
             return E_OK
 
         # handle CSV output
-        if args.output.endswith(".csv") or args.format == "csv":
-            data.to_csv(args.output)
+        if fmt == "csv":
+            data.to_csv(sys.stdout if options.output is None else options.output)
             return E_OK
 
-        # handle GZIP output
-        if args.output.endswith(".csv.gz") or args.format == "gzip":
-            data.to_csv(args.output,compression="gzip")
-            return E_OK
-
-        # handle ZIP output
-        if args.output.endswith(".csv.zip") or args.format == "zip":
-            data.to_csv(args.output,compression="zip")
+        # handle GZIP and ZIP output
+        if fmt in ("gzip","zip"):
+            data.to_csv(options.output,compression=fmt)
             return E_OK
 
         # handle XLSX output
-        if args.output.endswith(".xlsx") or args.format == "xlsx":
-            data.to_excel(args.output,
-                sheet_name="Form861",
-                merge_cells=False)
-            return E_OK
-
-        raise ValueError(f"output format '{args.format}' for '{args.output}' is invalid")
+        data.to_excel(options.output,
+            sheet_name=form.__name__,
+            merge_cells=False)
+        return E_OK
 
     # pylint: disable=broad-exception-caught
     except Exception as err:
 
-        if getattr(args,"debug"):
+        if getattr(options,"debug",False):
             raise
 
-        print(f"ERROR [eia]: {err}")
+        print(f"ERROR [eia]: {err}",file=sys.stderr,flush=True)
         return E_FAILED
