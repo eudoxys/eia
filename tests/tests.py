@@ -1184,6 +1184,45 @@ def test_cli_xlsx_timestamps():
         print("cli xlsx timestamps ok.",file=sys.stderr,flush=True)
     return errors
 
+def test_hs861m_deprecated():
+    """Test the deprecated HS861m class keeps its former interface without accessing EIA data"""
+    import warnings
+    import pandas as pd
+    import eia.form861msales as form861msales
+    from eia.hs861m import HS861m as module_hs861m
+    errors = 0
+    saved = form861msales._cache
+    form861msales._cache = pd.DataFrame([{"year":2022,"month":m,"state":s,"status":"Final",
+        "tot_energy_mwh":1.0} for m in (7,8) for s in ("CA","WA")])
+    try:
+        assert module_hs861m is eia.HS861m and issubclass(eia.HS861m,Form861mSales), \
+            "HS861m is not the Form861mSales subclass"
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            data = eia.HS861m(2022,8)
+        assert any(issubclass(x.category,DeprecationWarning) and "Form861mSales" in str(x.message)
+            and x.filename == __file__ for x in caught), \
+            f"no DeprecationWarning at the caller ({[(str(x.message),x.filename) for x in caught]})"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore",DeprecationWarning)
+            assert list(data.index.names) == ["state"] and len(data) == 2, \
+                f"year+month got {data.index.names=}"
+            assert data.equals(Form861mSales(2022,8).droplevel("timestamp")), "data differs"
+            data = eia.HS861m(2022)
+            assert list(data.index.names) == ["date","state"] and len(data) == 4, \
+                f"year only got {data.index.names=}"
+            raw = eia.HS861m(2022,8,False,True) # former positional refresh, raw
+            assert len(raw) == 2 and "status" in raw.columns, "positional raw not accepted"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: HS861m deprecated --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("HS861m deprecated ok.",file=sys.stderr,flush=True)
+    finally:
+        form861msales._cache = saved
+    return errors
+
 if __name__ == "__main__":
 
     tested = 0

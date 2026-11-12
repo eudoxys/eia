@@ -211,7 +211,11 @@ breaks callers. `FormBase`'s docstring summarises them for the API reference.
    (`nameplate_mw`, `operating_year`, …).
 9. **Naming.** Class names follow EIA form numbers (`Form860m`, `Form923`).
    `HS861m` was renamed `Form861mSales` (module `eia.form861msales`) before
-   the first release, so no alias is kept (decided D6).
+   the first release (decided D6). `HS861m` (also importable from
+   `eia.hs861m`) remains as a deprecated subclass that warns with
+   `DeprecationWarning` and keeps the former interface (positional
+   `refresh`, `raw`; `date` index level; `state`-only index for a single
+   month). Remove it in a later release.
 
 ## 6. Command-line interface
 
@@ -366,4 +370,4 @@ version before `eia` can be uploaded (#2).
 | D3 | Output shape | **decided:** `MultiIndex` on `timestamp` + keys (GitHub #19) | — |
 | D4 | `cache` dependency | publish to PyPI · vendor into `eia` | #2, release |
 | D5 | Default cache location | `platformdirs` user cache · change `cache` package default | #11 |
-| D6 | `HS861m` name | **decided:** renamed `Form861mSales` (GitHub #19) | — |
+| D6 | `HS861m` name | **decided:** renamed `Form861mSales`, deprecated `HS861m` alias kept (GitHub #19) | — |

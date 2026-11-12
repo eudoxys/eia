@@ -28,8 +28,7 @@ First public release. Changes since the initial import:
   and all column names are lower-case with a unit suffix (e.g., Form 860m
   `NAMEPLATE_MW` → `nameplate_mw`, Form 930 `load_MW` → `load_mw`,
   `NG_MW` → `ng_mw`). The `date` column/index level is now `timestamp`.
-- **Breaking:** `HS861m` is renamed `Form861mSales` (module
-  `eia.form861msales`) (#19).
+- `HS861m` is renamed `Form861mSales` (module `eia.form861msales`) (#19).
 - `raw=True` is supported by every form, including `Form923`, `Form930`,
   and `Form930Fuel` (#19); `Form861m` accepts `month=None` for a whole year.
 - Pandas operations on a form return plain `pandas.DataFrame` objects (#19).
@@ -43,6 +42,13 @@ First public release. Changes since the initial import:
 - Invalid arguments raise exceptions instead of failing `assert` checks (#37).
 - `pyproject.toml` metadata uses PEP 621 author fields and a PEP 639 license
   expression (#22).
+
+### Deprecated
+
+- `HS861m` (and `eia.hs861m`) remain as a compatibility class with the
+  former interface (`date` index level, `state`-only index for a single
+  month, positional `refresh` and `raw`) and issue a `DeprecationWarning`;
+  use `Form861mSales` instead (#19).
 
 ### Fixed
 

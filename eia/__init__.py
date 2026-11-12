@@ -93,6 +93,7 @@ Currently supported forms are
 - `eia.form861m.Form861m`: Small-scale (under 1 MW) solar capacity and energy by state and sector
 
 - `eia.form861msales.Form861mSales`: Monthly retail sales, revenue, customers, and price by state and sector
+  (formerly `HS861m`, which is still available but deprecated)
 
 - `eia.form923.Form923`: Monthly net generation by balancing authority or by
   plant, prime mover, and fuel
@@ -299,5 +300,5 @@ from eia.form860m import Form860m
 from eia.form861m import Form861m
 from eia.form930 import Form930, Form930Fuel
 from eia.form923 import Form923
-from eia.form861msales import Form861mSales
+from eia.form861msales import Form861mSales, HS861m
 from eia.base import cache_dir, set_cache_dir, clear_cache, download_options, set_download_options

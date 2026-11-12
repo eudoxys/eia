@@ -9,6 +9,7 @@ Access the following EIA Form data
 
   - Form 861m sales: Monthly retail sales, revenue, customers, and price by
     state and sector
+    (`Form861mSales`; the former name `HS861m` is deprecated)
 
   - Form 923: Monthly net generation by state, balancing authority, and fuel,
     or by plant, prime mover, and fuel

@@ -105,6 +105,9 @@ dg.xs("WA", level="state")[["tot_mw", "tot_mwh"]]
 - Missing values are set to `0.0` unless `raw=True`.
 - `raw=True` returns the selected rows with `year`, `month`, `state`,
   `status` columns.
+- `HS861m` is the deprecated former name: it still works (former index
+  `date`/`state`, `state` only for a single month) but warns with
+  `DeprecationWarning`. Use `Form861mSales` in new code.
 
 ```python
 sales = Form861mSales(2022, 7)

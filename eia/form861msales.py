@@ -10,6 +10,7 @@ References
 """
 
 from io import BytesIO
+import warnings
 import numpy as np
 import pandas as pd
 from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, \
@@ -190,6 +191,50 @@ class Form861mSales(FormBase):
         data = data.dropna(subset="status")
         data.to_csv(cache.pathname,index=False,header=True)
         return data
+
+
+class HS861m(Form861mSales):
+    """Deprecated: use `Form861mSales`
+
+    `HS861m` is the former name of `Form861mSales` and is kept so that
+    existing code keeps working. Constructing it issues a
+    `DeprecationWarning`; it will be removed in a future release.
+
+    It keeps the former interface:
+
+      - `refresh` and `raw` may be given positionally, in that order, after
+        `year` and `month`;
+
+      - the time index level is named `date` instead of `timestamp`;
+
+      - when both `year` and `month` are given, the result is indexed by
+        `state` only.
+
+    The data, columns, and `raw=True` output are the same as
+    `Form861mSales` (in particular, `raw=True` applies the `year` and
+    `month` selection).
+    """
+
+    def __init__(
+        self,
+        year:int|str|None=None,
+        month:int|str|None=None,
+        refresh:bool=False,
+        raw:bool=False,
+        ):
+        """Construct Form 861m retail sales data frame (deprecated)
+
+        See `Form861mSales` for the arguments.
+        """
+        warnings.warn("HS861m is deprecated and will be removed in a future release; "
+            "use Form861mSales (indexed by timestamp and state) instead",
+            DeprecationWarning,stacklevel=2)
+        data = pd.DataFrame(Form861mSales(year,month,raw=raw,refresh=refresh))
+        if not raw:
+            data = data.rename_axis(index={"timestamp":"date"})
+            if year is not None and month is not None:
+                data = data.droplevel("date")
+        FormBase.__init__(self,data)
 
 
 if __name__ == "__main__":
