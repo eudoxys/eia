@@ -146,6 +146,41 @@ def test_form860m():
             print(f"Form860m({year=},{month=}) ok.",file=sys.stderr,flush=True)
     return errors
 
+def test_form860m_badcache():
+    """Test Form 860m reports a corrupt cached workbook without accessing EIA data"""
+    import tempfile
+    import warnings
+    errors = 0
+    saved = Form860m.CACHEDIR
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            Form860m.CACHEDIR = tmpdir
+            cachefile = os.path.join(tmpdir,"form860_2020_08.xlsx")
+            with open(cachefile,"wb") as fh:
+                fh.write(b"not a workbook")
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                try:
+                    Form860m(2020,8)
+                except RuntimeError as err:
+                    message = str(err)
+                else:
+                    raise AssertionError("corrupt cache file did not raise RuntimeError")
+            assert cachefile in message, f"cache path missing from error: {message}"
+            assert "august_generator2020.xlsx" in message, f"URL missing from error: {message}"
+            assert any(cachefile in str(x.message) for x in caught), \
+                f"no warning naming the cache file ({[str(x.message) for x in caught]})"
+            assert not os.path.exists(cachefile), "corrupt cache file was not deleted"
+    except Exception as err:
+        print(f"ERROR [eia.tests]: Form860m bad cache --> {err}",file=sys.stderr,flush=True)
+        errors += 1
+        raise
+    else:
+        print("Form860m bad cache ok.",file=sys.stderr,flush=True)
+    finally:
+        Form860m.CACHEDIR = saved
+    return errors
+
 def test_form861m():
     """Test Form 861m data frame"""
     errors = 0
