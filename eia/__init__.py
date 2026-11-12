@@ -5,7 +5,7 @@ The `eia` package downloads and structures EIA form data for bulk power systems.
 Syntax
 ------
     
-    eia [-y YEAR] [-m MONTH] [-r|--region REGION] [--subset SUBSET]
+    eia [-y YEAR] [-m MONTH] [-r|--respondent RESPONDENT] [--subset SUBSET]
         [--state STATES] [--ba BAS] [--fuel FUELS] [--plant PLANTS]
         [--by {ba,plant}] [--no-increments]
         [-o|--output OUTPUT] [--raw] [--refresh]
@@ -27,10 +27,10 @@ Positional arguments
   authority or by plant, prime mover, and fuel
 
 - `region_hourly`: EIA Form 930 hourly load, net generation, and interchange
-  by balancing authority or region (requires `--region`)
+  by balancing authority or region (requires `--respondent`)
 
 - `region_fuel_hourly`: EIA Form 930 hourly net generation by energy source
-  by balancing authority or region (requires `--region`)
+  by balancing authority or region (requires `--respondent`)
 
 - `help`: get online help
 
@@ -50,9 +50,9 @@ Optional arguments
 - `-m MONTH`, `--month MONTH`: select month (number, name, or abbreviation,
   e.g., `8`, `August`, or `aug`)
 
-- `-r REGION`, `--region REGION`, `--respondent REGION`: select region or
-  balancing authority (`region_hourly` and `region_fuel_hourly`; see
-  `eia.Form930.respondents()`)
+- `-r RESPONDENT`, `--respondent RESPONDENT`, `--region RESPONDENT`: select
+  region or balancing authority (`region_hourly` and `region_fuel_hourly`;
+  see `eia.Form930.respondents()`)
 
 - `--state STATES`, `--states STATES`: select states, comma separated
   (`generation_monthly`)
@@ -72,7 +72,7 @@ Optional arguments
 - `--no-increments`: exclude EIA's state-fuel level increment estimates
   (plant `99999`) (`generation_monthly`)
 
-- `--subset SUBSET`: data subset requested
+- `--subset SUBSET`: fleet subset (`bulk_generation`; default `Operating`)
 
 - `--warning`: enable warning message from python
 
@@ -92,7 +92,8 @@ Currently supported forms are
 
 - `eia.form861m.Form861m`: Small-scale (under 1 MW) solar capacity and energy by state and sector
 
-- `eia.hs861m.HS861m`: Monthly retail sales, revenue, customers, and price by state and sector
+- `eia.form861msales.Form861mSales`: Monthly retail sales, revenue, customers, and price by state and sector
+  (formerly `HS861m`, which is still available but deprecated)
 
 - `eia.form923.Form923`: Monthly net generation by balancing authority or by
   plant, prime mover, and fuel
@@ -102,6 +103,35 @@ Currently supported forms are
 
 - `eia.form930.Form930Fuel`: Hourly net generation by energy source by
   balancing authority or region (UTC, hour-beginning; July 2018 onward)
+
+Conventions
+-----------
+
+All forms follow the same conventions:
+
+- `Form(year, month=None, *, <filters>, raw=False, refresh=False)`: `year`
+  and `month` are the only positional arguments; filters and options are
+  keyword-only. Form 930 requires `respondent=` (e.g.,
+  `Form930(2020,8,respondent="CAL")`). `Form860m` requires `month`.
+
+- `year` and `month` accept an `int` or a numeric `str`; `month` also accepts
+  a name or abbreviation. `month=None` selects the whole year.
+
+- Filters (`states`, `bas`, `fuels`, `plants`) accept one value or a list;
+  `None` selects all.
+
+- The index starts with `timestamp`, the tz-aware UTC beginning of the month
+  or hour, followed by the natural keys of a row (e.g., `state`, `ba`,
+  `fuel`). Measured values are columns.
+
+- Column names are lower case with a unit suffix on measured values: `_mw`,
+  `_mwh`, `_kusd` (thousand US dollars), `_cpkwh` (US cents per kWh), `_qty`
+  (count).
+
+- `raw=True` returns the EIA data for the requested period with a default
+  integer index and no renaming, coercion, or filtering.
+
+- Pandas operations on a form return plain `pandas.DataFrame` objects.
 
 Form 930 data are obtained from the EIA Open Data API, which requires an API
 key. Register at https://www.eia.gov/opendata/register.php, then store the key
@@ -126,21 +156,17 @@ Get the state-level distributed generation data for August 2020
 
 Outputs
 
-                            date state    res_mw    com_mw    ind_mw     tot_mw      res_mwh     com_mwh     ind_mwh      tot_mwh
-    0  2020-08-01 00:00:00+00:00    AK     5.405     1.473     0.043      6.921      701.497     193.737       6.117      901.351
-    1  2020-08-01 00:00:00+00:00    AL     0.000     0.000     0.611      0.000        0.000       0.000      99.501        0.000
-    2  2020-08-01 00:00:00+00:00    AR    24.698    13.600    15.846     54.144     4164.484    2334.792    2719.254     9218.530
-    .
-    .
-    .
-    48 2020-08-01 00:00:00+00:00    WI    41.373    39.805    13.853     95.031     6365.008    6313.855    2171.008    14849.871
-    49 2020-08-01 00:00:00+00:00    WV     6.987     3.127     0.058     10.172     1071.614     486.645       9.013     1567.273
-    50 2020-08-01 00:00:00+00:00    WY     6.272     1.393     0.276      7.941     1080.503     248.006      49.268     1377.776
+                                 res_mw  com_mw  ind_mw  tot_mw   res_mwh   com_mwh  ind_mwh   tot_mwh
+    timestamp                 state
+    2020-08-01 00:00:00+00:00 AK      5.405   1.473   0.043   6.921   701.497   193.737    6.117   901.351
+                              AL      0.000   0.000   0.611   0.000     0.000     0.000   99.501     0.000
+                              AR     24.698  13.600  15.846  54.144  4164.484  2334.792 2719.254  9218.530
+    ...
 
 Get the hourly load, net generation, and interchange for California in August
 2020 (Form 930)
 
-    eia region_hourly --region CAL --year 2020 --month 8
+    eia region_hourly --respondent CAL --year 2020 --month 8
 
 Get the August 2020 net generation from natural gas and hydro in the CAISO
 balancing authority (Form 923)
@@ -150,7 +176,7 @@ balancing authority (Form 923)
 Get the hourly net generation by energy source for the Bonneville Power
 Administration in August 2020 (Form 930)
 
-    eia region_fuel_hourly --region BPAT --year 2020 --month 8
+    eia region_fuel_hourly --respondent BPAT --year 2020 --month 8
 
 Python
 ------
@@ -158,20 +184,16 @@ Python
 Get the state-level distributed generation data for August 2020
 
     from eia import Form861m
-    Form861m(year=2020,month=8)
+    Form861m(2020,8)
 
 Outputs
 
-                            date state    res_mw    com_mw    ind_mw     tot_mw      res_mwh     com_mwh     ind_mwh      tot_mwh
-    0  2020-08-01 00:00:00+00:00    AK     5.405     1.473     0.043      6.921      701.497     193.737       6.117      901.351
-    1  2020-08-01 00:00:00+00:00    AL     0.000     0.000     0.611      0.000        0.000       0.000      99.501        0.000
-    2  2020-08-01 00:00:00+00:00    AR    24.698    13.600    15.846     54.144     4164.484    2334.792    2719.254     9218.530
-    .
-    .
-    .
-    48 2020-08-01 00:00:00+00:00    WI    41.373    39.805    13.853     95.031     6365.008    6313.855    2171.008    14849.871
-    49 2020-08-01 00:00:00+00:00    WV     6.987     3.127     0.058     10.172     1071.614     486.645       9.013     1567.273
-    50 2020-08-01 00:00:00+00:00    WY     6.272     1.393     0.276      7.941     1080.503     248.006      49.268     1377.776
+                                 res_mw  com_mw  ind_mw  tot_mw   res_mwh   com_mwh  ind_mwh   tot_mwh
+    timestamp                 state
+    2020-08-01 00:00:00+00:00 AK      5.405   1.473   0.043   6.921   701.497   193.737    6.117   901.351
+                              AL      0.000   0.000   0.611   0.000     0.000     0.000   99.501     0.000
+                              AR     24.698  13.600  15.846  54.144  4164.484  2334.792 2719.254  9218.530
+    ...
 
 Get the August 2020 net generation from natural gas and hydro in the CAISO
 balancing authority (Form 923)
@@ -194,18 +216,18 @@ Get the same data by plant and prime mover for hydro plants in California
     Form923(2020,8,states="CA",fuels="WAT",by="plant")
 
 Get the hourly load, net generation, and interchange for California in August
-2020 (Form 930; columns `timestamp`, `load_MW`, `generation_MW`,
-`interchange_MW`)
+2020 (Form 930; indexed by `timestamp`, columns `load_mw`, `generation_mw`,
+`interchange_mw`)
 
     from eia import Form930
-    Form930("CAL",2020,8)
+    Form930(2020,8,respondent="CAL")
 
 Get the hourly net generation by energy source for the Bonneville Power
-Administration in August 2020 (Form 930; one `{code}_MW` column per energy
-source, e.g., `NG_MW`, `NUC_MW`, `WAT_MW`, `WND_MW`)
+Administration in August 2020 (Form 930; one `{code}_mw` column per energy
+source, e.g., `ng_mw`, `nuc_mw`, `wat_mw`, `wnd_mw`)
 
     from eia import Form930Fuel
-    Form930Fuel("BPAT",2020,8)
+    Form930Fuel(2020,8,respondent="BPAT")
 
 Caching
 -------
@@ -278,5 +300,5 @@ from eia.form860m import Form860m
 from eia.form861m import Form861m
 from eia.form930 import Form930, Form930Fuel
 from eia.form923 import Form923
-from eia.hs861m import HS861m
+from eia.form861msales import Form861mSales, HS861m
 from eia.base import cache_dir, set_cache_dir, clear_cache, download_options, set_download_options

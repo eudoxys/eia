@@ -10,7 +10,7 @@ from eia.form861m import Form861m
 from eia.form860m import Form860m
 from eia.form923 import Form923
 from eia.form930 import Form930, Form930Fuel
-from eia.hs861m import HS861m
+from eia.form861msales import Form861mSales
 
 E_OK = 0
 """Exit code on success"""
@@ -31,7 +31,7 @@ _EXTENSIONS = {
 
 _FORMS = {
     "bulk_generation": Form860m,
-    "customer_demand": HS861m,
+    "customer_demand": Form861mSales,
     "distributed_generation": Form861m,
     "generation_monthly": Form923,
     "region_hourly": Form930,
@@ -73,6 +73,17 @@ def output_format(output:str|None,fmt:str|None=None) -> str|None:
     raise ValueError(f"cannot infer output format from '{output}' "\
         f"(use --format or one of {', '.join(_EXTENSIONS)})")
 
+def _naive_utc(data:pd.DataFrame) -> pd.DataFrame:
+    """@private Convert tz-aware timestamps in the index and columns to naive UTC"""
+    data = pd.DataFrame(data)
+    names = [x for x in data.index.names if x is not None]
+    if names:
+        data = data.reset_index()
+    for column in data.columns:
+        if isinstance(data[column].dtype,pd.DatetimeTZDtype):
+            data[column] = data[column].dt.tz_convert("UTC").dt.tz_localize(None)
+    return data.set_index(names) if names else data
+
 def main(*args:str) -> int:
     """EIA form accessor main command line processor
 
@@ -111,8 +122,8 @@ def main(*args:str) -> int:
             help="select year")
         parser.add_argument("-m","--month",
             help="select month (number, name, or abbreviation)")
-        parser.add_argument("-r","--region","--respondent",
-            dest="region",
+        parser.add_argument("-r","--respondent","--region",
+            dest="respondent",
             help="select region or balancing authority (region_hourly, region_fuel_hourly)")
         parser.add_argument("--state","--states",
             dest="states",
@@ -169,7 +180,6 @@ def main(*args:str) -> int:
         # get data
         form = _FORMS[options.form]
         kwargs = {x:getattr(options,x) for x in dir(options) if x[0] != "_" }
-        kwargs["respondent"] = options.region # Form930Fuel name for --region
         data = form(**form.makeargs(**kwargs))
 
         # handle default output
@@ -190,7 +200,9 @@ def main(*args:str) -> int:
             data.to_csv(options.output,compression=fmt)
             return E_OK
 
-        # handle XLSX output
+        # handle XLSX output (Excel does not support time zones, so UTC
+        # timestamps are written without one)
+        data = _naive_utc(data)
         data.to_excel(options.output,
             sheet_name=form.__name__,
             merge_cells=False)

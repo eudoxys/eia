@@ -16,20 +16,22 @@ import os
 import warnings
 import pandas as pd
 from eia.base import FormBase, cache_entry, check_year, check_month, check_bool, \
-    check_published, download
+    check_published, download, month_start
 
 _cache = {}
+"""@private In-process cache of workbooks by year"""
 
 class Form861m(FormBase):
     """The `Form861m` class is a Pandas data frame loaded with the EIA Form 861
     distributed/small scale solar data for US states starting in 2017.
 
-    The data frame has a default integer index, one row per state, and the
-    following columns.
+    The data frame is indexed by
 
-      - `date`: the first day of the requested month (UTC).
+      - `timestamp`: the first day of the month (UTC)
 
-      - `state`: the state for which the values are in effect.
+      - `state`: the state for which the values are in effect
+
+    and has the following columns.
 
       - `res_mw`: the residential power capacity in megaWatts.
 
@@ -49,7 +51,7 @@ class Form861m(FormBase):
 
     Missing and non-numeric values are set to `0.0`.
 
-    If the `raw` argument is `True`, the EIA rows for the requested month are
+    If the `raw` argument is `True`, the EIA rows for the requested period are
     returned with a default integer index and the columns `year`, `month`,
     `state`, `status`, and the capacity and energy columns above, without
     cleanup.
@@ -65,11 +67,15 @@ class Form861m(FormBase):
         ]
     """URLs to try for Form 861m workbooks (archived years, then recent years)"""
 
+    INDEX = ["timestamp","state"]
+    """Index levels of the data frame"""
+
     def __init__(self,
         year:int|str,
-        month:int|str,
-        refresh:bool=False,
+        month:int|str|None=None,
+        *,
         raw:bool=False,
+        refresh:bool=False,
         ):
         """Construct EIA Form 861 data frame
 
@@ -79,95 +85,56 @@ class Form861m(FormBase):
           - `year`: specifies the year (2017 to present)
 
           - `month`: specifies the month (1 to 12, or a name or abbreviation
-            such as `"August"` or `"Aug"`)
-
-          - `refresh`: refresh data cache (default `False`)
+            such as `"August"` or `"Aug"`); `None` selects every month of
+            `year` that EIA has published (default `None`)
 
           - `raw`: disable data frame cleanup, i.e., don't set `NaN` values
-            to 0.0, construct the `date` column, or remove the `year`,
+            to 0.0, construct the `timestamp` index, or remove the `year`,
             `month`, and `status` columns (default `False`)
+
+          - `refresh`: refresh data cache (default `False`)
 
         Raises
         ------
 
           - `TypeError`: an argument has the wrong type
 
-          - `ValueError`: `year` or `month` is not valid, or the month is
+          - `ValueError`: `year` or `month` is not valid, or the period is
             not published
 
           - `RuntimeError`: the workbook cannot be downloaded or read
         """
 
         year = check_year(year,2017)
-        month = check_month(month)
-        check_published(year,month)
+        month = check_month(month,optional=True)
+        if month is not None:
+            check_published(year,month)
         refresh = check_bool("refresh",refresh)
         raw = check_bool("raw",raw)
 
-        global _cache
-        cache_key = f"{year}-{month:02d}"
-        if not cache_key in _cache or refresh:
+        cachefile = cache_entry("form861m",f"{year}.xlsx",version=self.CACHE_VERSION).pathname
+        if year not in _cache or refresh:
+            _cache[year] = self._load(year,cachefile,refresh)
+        workbook = _cache[year]
 
-            # download data from EIA
-            cachefile = cache_entry("form861m",f"{year}.xlsx",
-                version=self.CACHE_VERSION).pathname
-
-            # read data from network if necessary
-            if refresh or not os.path.exists(cachefile):
-                content = None
-                urls = [x.format(year=year) for x in self.FORM861M_URLS]
-                for url in urls:
-                    req = download(url,missing_ok=True)
-                    if req is not None:
-                        content = req.content
-                        break
-                if content is None:
-                    raise RuntimeError(f"{year=} not found at any of {urls}")
-                with open(cachefile,"wb") as fh:
-                    fh.write(content)
-
-            # load workbook from cache
-            try:
-                workbook = pd.read_excel(cachefile,
-                    engine="openpyxl",
-                    sheet_name="Monthly Totals- States",
-                    skiprows=3,
-                    names=["year","month","state","status",
-                        "res_mw","com_mw","ind_mw","tot_mw",
-                        "res_mwh","com_mwh","ind_mwh","tot_mwh",
-                        ],
-                    # na_values = ["NM","."],
-                    dtype = {"state":str},
-                    index_col=[0,1],
-                    ).sort_index()
-            # pylint: disable=broad-exception-caught
-            except Exception as err:
-                warnings.warn(f"unable to read {cachefile} ({err})--"\
-                    "deleting invalid cache file")
-                if os.path.exists(cachefile):
-                    os.unlink(cachefile)
-                raise RuntimeError(f"{cachefile=} is not valid") from err
-
-            # extract requested month
-            try:
-                data = workbook.loc[(year,month),:].reset_index()
-            except KeyError as err:
-                raise ValueError(f"{year=} {month=} is not available in {cachefile} "
-                    "(not yet published by EIA, or use refresh=True to "
-                    "download a newer workbook)") from err
-
-            _cache[cache_key] = data.copy()
-        else:
-            data = _cache[cache_key].copy()
+        # extract requested period
+        selected = workbook.index.get_level_values("year") == year
+        if month is not None:
+            selected &= workbook.index.get_level_values("month") == month
+        data = workbook[selected]
+        if len(data) == 0:
+            raise ValueError(f"{year=} {month=} is not available in {cachefile} "
+                "(not yet published by EIA, or use refresh=True to "
+                "download a newer workbook)")
+        data = data.reset_index()
+        data["year"] = data["year"].astype(int)
+        data["month"] = data["month"].astype(int)
 
         # construct dataframe
         if not raw:
-            data.dropna(subset="status",inplace=True)
-            data.fillna(0.0,inplace=True)
-            data.index = pd.DatetimeIndex([f"{year}-{month:02d}-01 00:00:00+00:00"
-                for y,m in zip(data.year,data.month)],tz=0)
-            data.index.name = "date"
-            data.drop(["year","month","status"],axis=1,inplace=True)
+            data = data.dropna(subset="status").fillna(0.0)
+            data["timestamp"] = [month_start(y,m) for y,m in zip(data["year"],data["month"])]
+            data = data.drop(["year","month","status"],axis=1)
             def tofloat(x):
                 try:
                     return float(x)
@@ -175,15 +142,49 @@ class Form861m(FormBase):
                     return 0.0
             for column in [x for x in data.columns if x.endswith("_mw") or x.endswith("_mwh")]:
                 data[column] = [tofloat(x) for x in data[column]]
-            data.reset_index(inplace=True)
-            data.set_index(["date","state"],inplace=True)
-            data.sort_index(inplace=True)
-            data.reset_index(inplace=True)
+            data = data.set_index(self.INDEX).sort_index()
         else:
-            data.month = data.month.astype(int)
-            data.year = data.year.astype(int)
-            data.reset_index(drop=True,inplace=True)
+            data = data.reset_index(drop=True)
         super().__init__(data)
+
+    @classmethod
+    def _load(cls,year:int,cachefile:str,refresh:bool) -> pd.DataFrame:
+        """@private Load a year's workbook, indexed by `year` and `month`"""
+
+        # read data from network if necessary
+        if refresh or not os.path.exists(cachefile):
+            content = None
+            urls = [x.format(year=year) for x in cls.FORM861M_URLS]
+            for url in urls:
+                req = download(url,missing_ok=True)
+                if req is not None:
+                    content = req.content
+                    break
+            if content is None:
+                raise RuntimeError(f"{year=} not found at any of {urls}")
+            with open(cachefile,"wb") as fh:
+                fh.write(content)
+
+        # load workbook from cache
+        try:
+            return pd.read_excel(cachefile,
+                engine="openpyxl",
+                sheet_name="Monthly Totals- States",
+                skiprows=3,
+                names=["year","month","state","status",
+                    "res_mw","com_mw","ind_mw","tot_mw",
+                    "res_mwh","com_mwh","ind_mwh","tot_mwh",
+                    ],
+                dtype = {"state":str},
+                index_col=[0,1],
+                ).sort_index()
+        # pylint: disable=broad-exception-caught
+        except Exception as err:
+            warnings.warn(f"unable to read {cachefile} ({err})--"\
+                "deleting invalid cache file")
+            if os.path.exists(cachefile):
+                os.unlink(cachefile)
+            raise RuntimeError(f"{cachefile=} is not valid") from err
 
 
 if __name__ == '__main__':
@@ -196,7 +197,7 @@ if __name__ == '__main__':
     for year in range(2018,2023):
         for month in range(12):
             result.append(Form861m(year,month+1))
-    result = pd.concat(result).set_index("state").loc["WA"].set_index("date")
+    result = pd.concat(result).xs("WA",level="state")
     sectors = ["res","com","ind"]
     for sector in sectors:
         result[f"{sector}_cf"] = result[f"{sector}_mwh"] / result["tot_mwh"]

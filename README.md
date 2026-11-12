@@ -7,8 +7,9 @@ Access the following EIA Form data
   - Form 861m: Monthly small-scale (under 1 MW) solar capacity and generation
     by state and sector
 
-  - HS 861m: Monthly retail sales, revenue, customers, and price by state and
-    sector
+  - Form 861m sales: Monthly retail sales, revenue, customers, and price by
+    state and sector
+    (`Form861mSales`; the former name `HS861m` is deprecated)
 
   - Form 923: Monthly net generation by state, balancing authority, and fuel,
     or by plant, prime mover, and fuel
@@ -33,7 +34,7 @@ See https://www.eudoxys.com/eia
 Hourly load, net generation, and interchange for California in August 2020
 (Form 930)
 
-    eia region_hourly --region CAL --year 2020 --month 8
+    eia region_hourly --respondent CAL --year 2020 --month 8
 
 Monthly net generation from natural gas and hydro in the CAISO balancing
 authority for August 2020 (Form 923; add `--by plant` for plant-level data)
@@ -43,12 +44,12 @@ authority for August 2020 (Form 923; add `--by plant` for plant-level data)
 Hourly net generation by energy source for the Bonneville Power
 Administration in August 2020 (Form 930)
 
-    eia region_fuel_hourly --region BPAT --year 2020 --month 8
+    eia region_fuel_hourly --respondent BPAT --year 2020 --month 8
 
 ### Python code
 
     from eia import Form861m
-    Form861m(year=2020,month=8)
+    Form861m(2020,8)
 
 Monthly net generation from natural gas and hydro in the CAISO balancing
 authority for August 2020 (Form 923)
@@ -66,13 +67,38 @@ Hourly load, net generation, and interchange for California in August 2020
 (Form 930)
 
     from eia import Form930
-    Form930("CAL",2020,8)
+    Form930(2020,8,respondent="CAL")
 
 Hourly net generation by energy source for the Bonneville Power Administration
 in August 2020 (Form 930)
 
     from eia import Form930Fuel
-    Form930Fuel("BPAT",2020,8)
+    Form930Fuel(2020,8,respondent="BPAT")
+
+## Conventions
+
+Every form follows the same API, so code written for one form carries over
+to the others:
+
+- **Signature:** `Form(year, month=None, *, <filters>, raw=False,
+  refresh=False)`. Only `year` and `month` are positional; everything else is
+  keyword-only. Form 930 requires `respondent=`, e.g.,
+  `Form930(2020,8,respondent="CAL")`. `Form860m` requires `month`.
+- **Period:** `year` and `month` accept an `int` or a numeric `str` (`month`
+  also accepts a name such as `"Aug"`). `month=None` selects the whole year.
+- **Filters** (`states`, `bas`, `fuels`, `plants`) accept one value or a
+  list; `None` selects all.
+- **Index:** `timestamp` (tz-aware UTC, beginning of the month or hour)
+  followed by the natural keys of a row, e.g., `(timestamp, state, ba, fuel)`
+  for Form 923 and `(timestamp, plant, generator)` for Form 860m. Form 930
+  frames are indexed by `timestamp` only.
+- **Columns:** lower case with a unit suffix on measured values: `_mw`,
+  `_mwh`, `_kusd` (thousand US dollars), `_cpkwh` (US cents per kWh), `_qty`
+  (count). Energy source columns use lower-cased EIA codes, e.g., `ng_mw`.
+- **Raw data:** `raw=True` returns the EIA data for the requested period
+  with a default integer index and no renaming, coercion, or filtering.
+- **Return type:** the form classes are loaders. Pandas operations on a form
+  (e.g., `.loc[]`, `.groupby()`) return plain `pandas.DataFrame` objects.
 
 ## Notes
 
