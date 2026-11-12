@@ -103,7 +103,7 @@ Currently supported forms are
   balancing authority or region (UTC, hour-beginning)
 
 - `eia.form930.Form930Fuel`: Hourly net generation by energy source by
-  balancing authority or region (UTC, hour-beginning; July 2018 onward)
+  balancing authority or region (UTC, hour-beginning; January 2019 onward)
 
 Conventions
 -----------

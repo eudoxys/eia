@@ -33,6 +33,7 @@ def test_region_data(api):
     assert list(data.index.names) == ["timestamp"] and len(data) == 744
     assert data.index[0] == pd.Timestamp("2020-08-01",tz="UTC"), "hour-ending not shifted"
     assert list(data.columns) == ["load_mw","generation_mw","interchange_mw"]
+    assert data.notna().all(axis=1).mean() > 0.99, "API returned no or few values"
     assert (data == 1.0).all().all()
 
     # second call uses the cache
@@ -75,19 +76,20 @@ def test_reference_data(fake_get):
     assert len(calls) == 3, "refresh did not download reference data"
 
 @pytest.mark.network
-@pytest.mark.parametrize("year,month",[(2018,1),(2018,7)])
+@pytest.mark.parametrize("year,month",[(2019,1),(2019,7)])
 def test_live(api_key,year,month): # pylint: disable=unused-argument
     """Form 930 data from the EIA API"""
     data = Form930(year,month,respondent="CISO")
     assert len(data) == 744
     assert data.index[0] == dt.datetime(year,month,1,tzinfo=dt.timezone.utc)
     assert list(data.columns) == ["load_mw","generation_mw","interchange_mw"]
+    assert data.notna().all(axis=1).mean() > 0.99, "API returned no or few values"
 
 @pytest.mark.network
 def test_live_fuel(api_key): # pylint: disable=unused-argument
     """Form 930 fuel mix totals match net generation"""
-    data = Form930(2018,7,respondent="CISO")
-    fuel = Form930Fuel(2018,7,respondent="CISO")
+    data = Form930(2019,7,respondent="CISO")
+    fuel = Form930Fuel(2019,7,respondent="CISO")
     assert len(fuel) == 744
     assert "sun_mw" in fuel.columns
     error = (fuel.sum(axis=1,min_count=1) - data.generation_mw).abs().median()

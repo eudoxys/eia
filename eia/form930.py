@@ -34,8 +34,10 @@ Caveat
     key must be stored in `~/.eia/api_key` or in the environment variable
     `EIA_API_KEY`.
 
-  - Balancing authority and region data starts in July 2015. Data by energy
-    source starts in July 2018.
+  - The EIA API serves Form 930 data (both by balancing authority or region
+    and by energy source) from January 2019. Earlier data are published only
+    as bulk files on the EIA Hourly Electric Grid Monitor and are not
+    accessed by this module.
 
 References
 ----------
@@ -317,7 +319,7 @@ class Form930(_Form930Base):
         }
     """API data types and the columns they are returned in"""
 
-    FIRST_MONTH = (2015,7)
+    FIRST_MONTH = (2019,1)
     """First year and month of data available"""
 
     TIMEZONES = {
@@ -343,11 +345,10 @@ class Form930(_Form930Base):
         Arguments
         ---------
 
-          - `year`: year of data (2015 or later, as `int` or `str`)
+          - `year`: year of data (2019 or later, as `int` or `str`)
 
           - `month`: month of data (1 to 12, or a name or abbreviation such
-            as `"Aug"`; `None` accesses entire year; months before July 2015
-            are omitted)
+            as `"Aug"`; `None` accesses entire year)
 
           - `respondent`: region or balancing authority code (required; see
             `eia.Form930.respondents()`)
@@ -422,7 +423,7 @@ class Form930Fuel(_Form930Base):
     UTC hour-ending) with a default integer index; `fuels` is ignored.
     """
 
-    FIRST_MONTH = (2018,7)
+    FIRST_MONTH = (2019,1)
     """First year and month of data available"""
 
     def __init__(self,
@@ -439,11 +440,10 @@ class Form930Fuel(_Form930Base):
         Arguments
         ---------
 
-          - `year`: year of data (2018 or later, as `int` or `str`)
+          - `year`: year of data (2019 or later, as `int` or `str`)
 
           - `month`: month of data (1 to 12, or a name or abbreviation such
-            as `"Aug"`; `None` accesses entire year; months before July 2018
-            are omitted)
+            as `"Aug"`; `None` accesses entire year)
 
           - `respondent`: balancing authority or region code (required; see
             `eia.Form930Fuel.respondents()`)

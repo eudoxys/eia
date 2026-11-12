@@ -116,8 +116,8 @@ to the others:
 
 - **Form 930 time convention:** timestamps are UTC and mark the *beginning*
   of the hour, so the value at `2020-08-01 00:00:00+00:00` covers 00:00 to
-  01:00 UTC. Load, generation, and interchange data start in July 2015; data
-  by energy source start in July 2018.
+  01:00 UTC. Form 930 data (load, generation, interchange, and generation by
+  energy source) start in January 2019, the first month the EIA API serves.
 
 - Downloaded data are cached locally; pass `refresh=True` (or `--refresh` on
   the command line) to download again. See [Caching](#caching).

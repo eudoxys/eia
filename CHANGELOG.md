@@ -19,6 +19,9 @@ First public release. Changes since the initial import:
 
 ### Changed
 
+- Form 930 data start in January 2019 for both `Form930` and `Form930Fuel`,
+  the first month the EIA API v2 serves (previously July 2015 and July
+  2018, which returned empty frames); earlier years raise `ValueError` (#48).
 - The test suite uses `pytest` (#21). Tests are split by module under
   `tests/test_*.py`, run offline by default against small synthetic EIA
   workbooks and API responses, and the tests that download data from EIA
