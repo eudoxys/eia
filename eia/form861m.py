@@ -14,7 +14,6 @@ References
 
 import os
 import datetime as dt
-import pytz
 import warnings
 import pandas as pd
 import requests
