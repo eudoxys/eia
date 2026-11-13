@@ -56,9 +56,11 @@ def bulk(fake_get,monkeypatch):
     monkeypatch.delenv("EIA_API_KEY",raising=False)
     monkeypatch.setattr(_Form930Base,"respondents",
         staticmethod(lambda refresh=False: ["BANC","CAL","CISO","US48"]))
-    monkeypatch.setattr(Form930Fuel,"_bulk",{})
-    monkeypatch.setattr(Form930Fuel,"_bulk_refreshed",set())
+    monkeypatch.setattr(_Form930Base,"_bulk",{})
+    monkeypatch.setattr(_Form930Base,"_bulk_refreshed",set())
     content = {
+        "EIA930_BALANCE_2015_Jul_Dec.csv": samples.form930_balance(2015,"Jul_Dec",
+            {"CISO":"CAL","BANC":"CAL"},fuels=False),
         "EIA930_BALANCE_2018_Jul_Dec.csv": samples.form930_balance(2018,"Jul_Dec",
             {"CISO":"CAL","BANC":"CAL"}),
         "EIA930_BALANCE_2018_Jan_Jun.csv": samples.form930_balance(2018,"Jan_Jun",
@@ -68,6 +70,54 @@ def bulk(fake_get,monkeypatch):
         assert "api.eia.gov" not in url, "API used for a month before 2019"
         return (200,content[url.rsplit("/",1)[1]])
     return fake_get(handler)
+
+def test_region_six_month_file(bulk):
+    """Demand, generation and interchange before 2019 from the six-month files"""
+    data = Form930(2018,8,respondent="CISO")
+    assert list(data.columns) == ["load_mw","generation_mw","interchange_mw"]
+    assert len(data) == 744 and data.index.name == "timestamp"
+    assert data.index[0] == pd.Timestamp("2018-08-01",tz="UTC"), "not converted to hour-beginning"
+    assert (data["load_mw"] == 5).all(), "adjusted column used instead of reported"
+    assert (data["generation_mw"] == 1004).all(), "thousands separator not parsed"
+    assert (data["interchange_mw"] == -1).all()
+    data = Form930(2018,3,respondent="CISO")
+    assert len(data) == 744 and data.notna().all().all(), "Jan-Jun file not read"
+    assert [x[0].rsplit("/",1)[1] for x in bulk] == ["EIA930_BALANCE_2018_Jul_Dec.csv",
+        "EIA930_BALANCE_2018_Jan_Jun.csv"]
+
+def test_region_six_month_file_shared(bulk):
+    """Form930 and Form930Fuel share one download of a six-month file"""
+    Form930(2018,8,respondent="CISO")
+    Form930Fuel(2018,8,respondent="CISO")
+    _Form930Base._bulk.clear()
+    Form930Fuel(2018,9,respondent="CISO")
+    Form930(2018,9,respondent="CISO")
+    assert len(bulk) == 1
+
+def test_region_six_month_file_region(bulk):
+    """A region is the sum of its balancing authorities"""
+    for respondent in ["CAL","US48"]:
+        data = Form930(2018,8,respondent=respondent)
+        assert (data["load_mw"] == 10).all() and (data["generation_mw"] == 1008).all()
+        assert (data["interchange_mw"] == -2).all()
+
+def test_region_six_month_file_year(bulk):
+    """2015 starts in July; earlier years are not available"""
+    data = Form930(2015,respondent="CISO")
+    assert data.index[0] == pd.Timestamp("2015-07-01",tz="UTC")
+    assert data.index[-1] == pd.Timestamp("2015-12-31 23:00",tz="UTC")
+    assert len(data) == 184*24 and data.notna().all().all()
+    assert Form930(2015,6,respondent="CISO").empty
+    with pytest.raises(ValueError):
+        Form930(2014,respondent="CISO")
+
+def test_region_six_month_file_raw(bulk):
+    """Raw six-month file data are API-style records"""
+    raw = Form930(2018,8,respondent="CISO",raw=True)
+    assert list(raw.columns) == ["period","respondent","type","value"]
+    assert raw["period"].iloc[0] == "2018-08-01T01"
+    assert set(raw["type"]) == {"D","NG","TI"}
+    assert len(raw) == 744*3
 
 def test_fuel_six_month_file(bulk):
     """July-December 2018 energy source data from the six-month file"""
@@ -84,13 +134,13 @@ def test_fuel_six_month_file_cached(bulk,cache_dir):
     Form930Fuel(2018,8,respondent="CISO")
     Form930Fuel(2018,9,respondent="BANC")
     assert len(bulk) == 1
-    Form930Fuel._bulk.clear()
+    _Form930Base._bulk.clear()
     assert (Form930Fuel(2018,10,respondent="CISO")["col_mw"] == 1000).all()
     assert len(bulk) == 1, "cached six-month data was downloaded again"
     assert list(cache_dir.rglob("EIA930_BALANCE_2018_Jul_Dec.csv.gz"))
     Form930Fuel(2018,10,respondent="CISO",refresh=True)
     assert len(bulk) == 1, "already downloaded by this process"
-    Form930Fuel._bulk_refreshed.clear()  # as in a new process
+    _Form930Base._bulk_refreshed.clear()  # as in a new process
     Form930Fuel(2018,10,respondent="CISO",refresh=True)
     Form930Fuel(2018,11,respondent="CISO",refresh=True)
     assert len(bulk) == 2, "refresh must download the six-month file once per process"

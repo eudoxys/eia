@@ -41,7 +41,7 @@ Out of scope:
 | `Form861m` | Form 861M small-scale solar | Excel workbook, one per year | state × month | 2017-01 | none |
 | `Form861mSales` | Form 861M sales and revenue | Excel workbook, all years in one file | state × month | 2017-01 per docstring (code does not check) | none |
 | `Form923` | Form 923 Schedules 2–5 net generation | ZIP of Excel workbooks, one per year | plant/prime mover/fuel × month, or state/BA/fuel × month | 2008-01 | none |
-| `Form930` | Form 930 hourly demand, generation, interchange | API v2 `electricity/rto/region-data` | respondent × hour | 2019-01 | `EIA_API_KEY` |
+| `Form930` | Form 930 hourly demand, generation, interchange | API v2 `electricity/rto/region-data`; six-month files `EIA930_BALANCE_{year}_{Jan_Jun,Jul_Dec}.csv` before 2019 | respondent × hour | 2015-07 | `EIA_API_KEY` (2019 on) |
 | `Form930Fuel` | Form 930 hourly generation by energy source | API v2 `electricity/rto/fuel-type-data`; six-month file `EIA930_BALANCE_{year}_Jul_Dec.csv` before 2019 | respondent × fuel × hour | 2018-07 | `EIA_API_KEY` (2019 on) |
 
 Each EIA source has its own publication lag, file layout history, and URL
@@ -127,6 +127,7 @@ All forms use `cache.Cache` through `eia.base.cache_entry()`, rooted at
 | `Form861mSales` | `cache_entry(version=0)` + module global | `{cache_dir}/eia/0/hs861m.csv` | one CSV for all years; in-process copy | `refresh=True` (but the in-process copy ignores it) |
 | `Form923` | `cache_entry(version=1)` | `{cache_dir}/eia/1/form923/` | normalised `{year}.csv.gz` and raw worksheet `{year}-raw.csv.gz` per year | `refresh=True`; regenerated on read error |
 | `Form930*` | `cache_entry(version=1)` | `{cache_dir}/eia/1/form930/` | raw API rows `.csv.gz` per respondent × month | `refresh=True`; regenerated on read error |
+| Form 930 six-month files | `cache_entry(version=2)` + class dict | `{cache_dir}/eia/2/form930/six-month-files/` | reported demand, generation, interchange and energy source columns `.csv.gz` per file, shared by `Form930` and `Form930Fuel` | `refresh=True` (once per process); regenerated on read error |
 | Form 930 reference tables | `cache_entry(version=1)` + class dict | `{cache_dir}/eia/1/reference/` | raw reference workbook | `refresh=True` on any Form 930 class or `respondents()`/`reference_data()`; re-downloaded once per process when a respondent code is not found (#15) |
 
 `cache_dir` is the folder set by `eia.set_cache_dir()`, else

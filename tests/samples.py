@@ -90,7 +90,9 @@ def form930_balance(year:int,half:str,bas:dict[str,str],fuels:bool=True) -> byte
     """Form 930 six-month balance file for balancing authorities `{code: region}`
 
     Values are reported for every UTC hour-ending in the half-year with local
-    time 8 hours behind UTC. With `fuels`, `Coal` is 1000 for the first BA
+    time 8 hours behind UTC. Demand is 5, net generation is `"1,004"` for the
+    first BA and 4 otherwise, total interchange is -1, and the adjusted
+    demand is 99. With `fuels`, `Coal` is 1000 for the first BA
     (written with a thousands separator) and 1 otherwise, `Solar` is the UTC
     hour-ending, and the other energy sources are empty.
     """
@@ -99,7 +101,8 @@ def form930_balance(year:int,half:str,bas:dict[str,str],fuels:bool=True) -> byte
     sources = ["Coal","Natural Gas","Nuclear","All Petroleum Products",
         "Hydropower and Pumped Storage","Solar","Wind","Other Fuel Sources","Unknown Fuel Sources"]
     header = ["Balancing Authority","Data Date","Hour Number","Local Time at End of Hour",
-        "UTC Time at End of Hour","Demand (MW)","Net Generation (MW)"]
+        "UTC Time at End of Hour","Demand (MW)","Net Generation (MW)","Total Interchange (MW)",
+        "Demand (MW) (Adjusted)"]
     if fuels:
         header += [f"Net Generation (MW) from {x}" for x in sources]
         header += [f"Net Generation (MW) from {x} (Adjusted)" for x in sources]
@@ -110,7 +113,7 @@ def form930_balance(year:int,half:str,bas:dict[str,str],fuels:bool=True) -> byte
             local = hour - pd.Timedelta(hours=8)
             row = [ba,local.strftime("%m/%d/%Y"),str(local.hour or 24),
                 local.strftime("%m/%d/%Y %-I:%M:%S %p"),hour.strftime("%m/%d/%Y %-I:%M:%S %p"),
-                "5","4"]
+                "5",'"1,004"' if n == 0 else "4","-1","99"]
             if fuels:
                 values = ['"1,000"' if n == 0 else "1"] + [""]*4 + [str(hour.hour)] + [""]*3
                 row += values + ["99"]*len(sources)

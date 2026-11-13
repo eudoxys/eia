@@ -27,7 +27,7 @@ Python 3.11 or later. Dependencies: `pandas`, `openpyxl`, `requests`,
 | Small-scale (<1 MW) solar capacity and energy by state and sector | `Form861m` | monthly, per state | 2017 → present |
 | Retail sales, revenue, customers, price by state and sector | `Form861mSales` | monthly, per state | full EIA table |
 | Net generation by state, BA and fuel, or by plant | `Form923` | monthly | 2008 → present |
-| Hourly load, net generation, interchange per BA or region | `Form930` | hourly (UTC) | January 2019 → present |
+| Hourly load, net generation, interchange per BA or region | `Form930` | hourly (UTC) | July 2015 → present |
 | Hourly net generation by energy source per BA or region | `Form930Fuel` | hourly (UTC) | July 2018 → present |
 
 All classes import from the package root:
@@ -150,7 +150,10 @@ Form923(2022).groupby(level="fuel")["gen_mwh"].sum()   # annual totals
   again, and an unknown code triggers one automatic re-download.
 - Indexed by `timestamp`; columns `load_mw`, `generation_mw`,
   `interchange_mw` (positive interchange is export).
-- Data start in January 2019; `month=None` returns the whole year.
+- Data start in July 2015; `month=None` returns the whole year (months
+  before July 2015 are omitted). Months before 2019 come from the EIA-930
+  six-month files (no API key; reported values only; a region is the sum of
+  its BAs; `raw=True` gives only `period`, `respondent`, `type`, `value`).
 - `raw=True` returns the API records (`period` is UTC hour-ending).
 
 ### `Form930Fuel(year, month=None, *, respondent, fuels=None, raw=False, refresh=False)`
