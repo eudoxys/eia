@@ -50,6 +50,77 @@ def test_fuel_type_data(api):
     assert len(raw) == 744*2, "raw applied the fuels filter"
     assert len(api) == 2, "fuel data downloaded more than once"
 
+@pytest.fixture
+def bulk(fake_get,monkeypatch):
+    """Serve a six-month balance file for July-December 2018 (no API key)"""
+    monkeypatch.delenv("EIA_API_KEY",raising=False)
+    monkeypatch.setattr(_Form930Base,"respondents",
+        staticmethod(lambda refresh=False: ["BANC","CAL","CISO","US48"]))
+    monkeypatch.setattr(Form930Fuel,"_bulk",{})
+    monkeypatch.setattr(Form930Fuel,"_bulk_refreshed",set())
+    content = {
+        "EIA930_BALANCE_2018_Jul_Dec.csv": samples.form930_balance(2018,"Jul_Dec",
+            {"CISO":"CAL","BANC":"CAL"}),
+        "EIA930_BALANCE_2018_Jan_Jun.csv": samples.form930_balance(2018,"Jan_Jun",
+            {"CISO":"CAL","BANC":"CAL"},fuels=False),
+        }
+    def handler(url,params):
+        assert "api.eia.gov" not in url, "API used for a month before 2019"
+        return (200,content[url.rsplit("/",1)[1]])
+    return fake_get(handler)
+
+def test_fuel_six_month_file(bulk):
+    """July-December 2018 energy source data from the six-month file"""
+    data = Form930Fuel(2018,8,respondent="CISO")
+    assert list(data.columns) == ["col_mw","sun_mw"], "reported columns only"
+    assert len(data) == 744 and data.index.name == "timestamp"
+    assert data.index[0] == pd.Timestamp("2018-08-01",tz="UTC")
+    assert (data["col_mw"] == 1000).all(), "thousands separator not parsed"
+    assert (data["sun_mw"] == (data.index.hour+1) % 24).all(), "not converted to hour-beginning"
+    assert [x[0].rsplit("/",1)[1] for x in bulk] == ["EIA930_BALANCE_2018_Jul_Dec.csv"]
+
+def test_fuel_six_month_file_cached(bulk,cache_dir):
+    """The six-month file is downloaded once and its energy source data cached"""
+    Form930Fuel(2018,8,respondent="CISO")
+    Form930Fuel(2018,9,respondent="BANC")
+    assert len(bulk) == 1
+    Form930Fuel._bulk.clear()
+    assert (Form930Fuel(2018,10,respondent="CISO")["col_mw"] == 1000).all()
+    assert len(bulk) == 1, "cached six-month data was downloaded again"
+    assert list(cache_dir.rglob("EIA930_BALANCE_2018_Jul_Dec.csv.gz"))
+    Form930Fuel(2018,10,respondent="CISO",refresh=True)
+    assert len(bulk) == 1, "already downloaded by this process"
+    Form930Fuel._bulk_refreshed.clear()  # as in a new process
+    Form930Fuel(2018,10,respondent="CISO",refresh=True)
+    Form930Fuel(2018,11,respondent="CISO",refresh=True)
+    assert len(bulk) == 2, "refresh must download the six-month file once per process"
+
+def test_fuel_six_month_file_region(bulk):
+    """A region is the sum of its balancing authorities"""
+    assert (Form930Fuel(2018,8,respondent="CAL")["col_mw"] == 1001).all()
+    assert (Form930Fuel(2018,8,respondent="US48")["col_mw"] == 1001).all()
+
+def test_fuel_six_month_file_year(bulk):
+    """2018 starts in July; earlier months are not available"""
+    data = Form930Fuel(2018,respondent="CISO")
+    assert data.index[0] == pd.Timestamp("2018-07-01",tz="UTC")
+    assert data.index[-1] == pd.Timestamp("2018-12-31 23:00",tz="UTC")
+    with pytest.raises(ValueError):
+        Form930Fuel(2018,6,respondent="CISO")
+    with pytest.raises(ValueError):
+        Form930Fuel(2017,respondent="CISO")
+
+def test_fuel_six_month_file_raw(bulk):
+    """Raw six-month file data are API-style records"""
+    raw = Form930Fuel(2018,8,respondent="CISO",raw=True)
+    assert list(raw.columns) == ["period","respondent","fueltype","value"]
+    assert raw["period"].iloc[0] == "2018-08-01T01" and set(raw["fueltype"]) == {"COL","SUN"}
+
+def test_fuel_six_month_file_missing_columns():
+    """A six-month file without the expected columns is an error"""
+    with pytest.raises(RuntimeError):
+        Form930Fuel._parse_bulk(b"a,b\n1,2\n")
+
 def test_reference_data(fake_get):
     """Reference data are cached, refreshed for unknown codes, and on request"""
     content = {"data":samples.form930_reference("CISO")}

@@ -36,16 +36,22 @@ Caveat
 
   - The EIA API serves Form 930 data (both by balancing authority or region
     and by energy source) from January 2019. Earlier data are published only
-    as bulk files on the EIA Hourly Electric Grid Monitor and are not
-    accessed by this module.
+    as six-month bulk files on the EIA Hourly Electric Grid Monitor.
+    `Form930Fuel` reads July to December 2018 from those files (the fuel mix
+    starts in July 2018; no API key is needed for these months). `Form930`
+    does not read them and starts in January 2019.
 
 References
 ----------
 
   - https://www.eia.gov/electricity/gridmonitor/about
 
+  - https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/ (six-month
+    files, e.g., `EIA930_BALANCE_2018_Jul_Dec.csv`)
+
   - https://www.eia.gov/opendata/browser/electricity/rto
 """
+import io
 import os
 import zipfile
 import pandas as pd
@@ -421,10 +427,129 @@ class Form930Fuel(_Form930Base):
     period are returned unchanged (columns `period`, `respondent`,
     `fueltype`, `value`, and the other fields the API returns; `period` is
     UTC hour-ending) with a default integer index; `fuels` is ignored.
+
+    Months before January 2019 are read from the EIA-930 six-month balance
+    file (`EIA930_BALANCE_{year}_Jul_Dec.csv`) instead of the API. These
+    months use the values as reported (not the imputed or adjusted columns)
+    and have only the codes in `BULK_FUELS`. A region (e.g., `CAL`) or
+    `US48` is the sum of its balancing authorities in the file, which can
+    differ from the region totals the API serves for later months. With
+    `raw=True` these months return only the columns `period`,
+    `respondent`, `fueltype` and `value`.
     """
 
-    FIRST_MONTH = (2019,1)
+    FIRST_MONTH = (2018,7)
     """First year and month of data available"""
+
+    API_FIRST_MONTH = (2019,1)
+    """First year and month served by the EIA API (earlier months are read
+    from the six-month files)"""
+
+    BULK_URL = "https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/" \
+        "EIA930_BALANCE_{year}_{half}.csv"
+    """@private URL of the EIA-930 six-month balance files"""
+
+    BULK_FUELS = {
+        "Coal": "COL",
+        "Natural Gas": "NG",
+        "Nuclear": "NUC",
+        "All Petroleum Products": "OIL",
+        "Hydropower and Pumped Storage": "WAT",
+        "Solar": "SUN",
+        "Wind": "WND",
+        "Other Fuel Sources": "OTH",
+        "Unknown Fuel Sources": "UNK",
+        }
+    """Six-month file energy sources and the API codes they are returned as"""
+
+    _bulk = {}
+    """@private runtime cache of six-month file data by `(year,half)`"""
+
+    _bulk_refreshed = set()
+    """@private six-month files downloaded by this process"""
+
+    @classmethod
+    def _cached(cls,route:str,respondent:str,facets:dict[str,list[str]],
+            year:int,month:int,refresh:bool) -> pd.DataFrame:
+        """@private Get one month of raw data from the API or a six-month file"""
+        if (year,month) >= cls.API_FIRST_MONTH:
+            return super()._cached(route,respondent,facets,year,month,refresh)
+        return cls._bulk_records(respondent,year,month,refresh)
+
+    @classmethod
+    def _bulk_records(cls,respondent:str,year:int,month:int,refresh:bool) -> pd.DataFrame:
+        """@private Get one month of a respondent's six-month file data as API records
+
+        A region or `US48` is the sum of its balancing authorities.
+        """
+        data = cls._bulk_data(year,"Jan_Jun" if month <= 6 else "Jul_Dec",refresh)
+        start = pd.Timestamp(year=year,month=month,day=1)
+        periods = pd.date_range(start+pd.Timedelta(hours=1),
+            start+pd.DateOffset(months=1),freq="h").strftime("%Y-%m-%dT%H")
+        data = data.loc[data["period"].isin(periods)]
+        if respondent == "US48":
+            rows = data
+        elif respondent in set(data["respondent"]):
+            rows = data.loc[data["respondent"] == respondent]
+        else:
+            rows = data.loc[data["region"] == respondent]
+        codes = list(cls.BULK_FUELS.values())
+        rows = rows.groupby("period")[codes].sum(min_count=1).reset_index()
+        rows = rows.melt(id_vars="period",var_name="fueltype",value_name="value").dropna()
+        if rows.empty:
+            return cls._empty_raw()
+        rows.insert(1,"respondent",respondent)
+        return rows.sort_values(["period","fueltype"],ignore_index=True)
+
+    @classmethod
+    def _bulk_data(cls,year:int,half:str,refresh:bool) -> pd.DataFrame:
+        """@private Get the energy source data in a six-month file
+
+        Returns a frame with columns `respondent`, `region`, `period` (API
+        style UTC hour-ending, e.g. `2018-07-01T08`) and one column per code
+        in `BULK_FUELS`. The 40+ MB file is downloaded once (once per process
+        when `refresh` is set) and only these columns are cached.
+        """
+        name = f"EIA930_BALANCE_{year}_{half}"
+        refresh = refresh and name not in cls._bulk_refreshed
+        if name in cls._bulk and not refresh:
+            return cls._bulk[name]
+        cache = cache_entry("form930","six-month-files",f"{name}.csv.gz",version=1)
+        data = None
+        if cache.exists() and not refresh:
+            try:
+                data = pd.read_csv(cache.pathname,dtype={"respondent":str,"region":str,"period":str},
+                    keep_default_na=False,na_values=[""])
+            except Exception: # pylint: disable=broad-exception-caught
+                cache.delete()
+        if data is None:
+            data = cls._parse_bulk(download(cls.BULK_URL.format(year=year,half=half)).content)
+            data.to_csv(cache.pathname,index=False,header=True,compression="gzip")
+            cls._bulk_refreshed.add(name)
+        cls._bulk[name] = data
+        return data
+
+    @classmethod
+    def _parse_bulk(cls,content:bytes) -> pd.DataFrame:
+        """@private Extract the reported energy source data from a six-month file"""
+        columns = {"Balancing Authority":"respondent","Region":"region",
+            "UTC Time at End of Hour":"period"}
+        columns |= {f"Net Generation (MW) from {x}":y for x,y in cls.BULK_FUELS.items()}
+        data = pd.read_csv(io.BytesIO(content),usecols=lambda x: x in columns,
+            thousands=",",dtype={"Balancing Authority":str,"Region":str},low_memory=False)
+        required = {"Balancing Authority","UTC Time at End of Hour"}
+        if not required <= set(data.columns):
+            raise RuntimeError(f"six-month file has no {sorted(required-set(data.columns))} columns")
+        data = data.rename(columns=columns)
+        if "region" not in data:
+            data["region"] = ""
+        for code in cls.BULK_FUELS.values():
+            if code not in data:
+                data[code] = float("nan")
+            data[code] = pd.to_numeric(data[code],errors="coerce")
+        data["period"] = pd.to_datetime(data["period"],format="%m/%d/%Y %I:%M:%S %p") \
+            .dt.strftime("%Y-%m-%dT%H")
+        return data[["respondent","region","period"]+list(cls.BULK_FUELS.values())]
 
     def __init__(self,
         year:int|str,
@@ -440,7 +565,8 @@ class Form930Fuel(_Form930Base):
         Arguments
         ---------
 
-          - `year`: year of data (2019 or later, as `int` or `str`)
+          - `year`: year of data (2018 or later, as `int` or `str`; 2018
+            has data from July only)
 
           - `month`: month of data (1 to 12, or a name or abbreviation such
             as `"Aug"`; `None` accesses entire year)

@@ -42,7 +42,7 @@ Out of scope:
 | `Form861mSales` | Form 861M sales and revenue | Excel workbook, all years in one file | state × month | 2017-01 per docstring (code does not check) | none |
 | `Form923` | Form 923 Schedules 2–5 net generation | ZIP of Excel workbooks, one per year | plant/prime mover/fuel × month, or state/BA/fuel × month | 2008-01 | none |
 | `Form930` | Form 930 hourly demand, generation, interchange | API v2 `electricity/rto/region-data` | respondent × hour | 2019-01 | `EIA_API_KEY` |
-| `Form930Fuel` | Form 930 hourly generation by energy source | API v2 `electricity/rto/fuel-type-data` | respondent × fuel × hour | 2019-01 | `EIA_API_KEY` |
+| `Form930Fuel` | Form 930 hourly generation by energy source | API v2 `electricity/rto/fuel-type-data`; six-month file `EIA930_BALANCE_{year}_Jul_Dec.csv` before 2019 | respondent × fuel × hour | 2018-07 | `EIA_API_KEY` (2019 on) |
 
 Each EIA source has its own publication lag, file layout history, and URL
 scheme (e.g. current-year vs `archive/` paths). Those quirks are contained in

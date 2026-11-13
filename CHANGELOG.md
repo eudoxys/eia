@@ -17,6 +17,10 @@ First public release. Changes since the initial import:
 - Documentation deployed with GitHub Pages (#26, #41), `DESIGN.md` (#24),
   and a Claude Code skill (#2).
 
+- `Form930Fuel` reads July-December 2018 from the EIA-930 six-month balance
+  file, so the fuel mix now starts in July 2018 (no API key is needed for
+  those months; regions are summed from their balancing authorities).
+
 ### Changed
 
 - Form 930 data start in January 2019 for both `Form930` and `Form930Fuel`,
