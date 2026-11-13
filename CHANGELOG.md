@@ -69,6 +69,10 @@ First public release. Changes since the initial import:
   selection (#27).
 - Corrupt Form 860m cache files are reported instead of raising
   `UnboundLocalError` (#31).
+- `Form860m(..., raw=True)` returns integer columns such as `Plant ID` as
+  EIA's original text (`"10"`, not `"10.0"`). The Form 860m cache version
+  is now 2, so existing Form 860m caches are ignored and the workbooks are
+  downloaded again (#47).
 - Form 861m keeps its cache when a month is missing and tries both URLs (#32).
 - Form 930 API key lookup works on Windows and never leaks the key (#39).
 - Form 930 UTC timestamps (#1).
