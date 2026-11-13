@@ -9,6 +9,7 @@ import os
 import zipfile
 import datetime as dt
 import pandas as pd
+from eia.form860m import Form860m
 
 def form860m_workbook(year:int,month:int,rows:list[dict],subset:str="Operating") -> bytes:
     """Form 860m generator workbook with one subset sheet
@@ -103,15 +104,16 @@ def write_cache_files(cachedir:str):
     base = os.path.join(cachedir,"eia","1")
 
     # Form 860m: workbook placeholder and subset cache with EIA headers
-    os.makedirs(os.path.join(base,"form860m"))
-    with open(os.path.join(base,"form860m","2020-08.xlsx"),"wb") as fh:
+    form860m = os.path.join(cachedir,"eia",str(Form860m.CACHE_VERSION),"form860m")
+    os.makedirs(form860m)
+    with open(os.path.join(form860m,"2020-08.xlsx"),"wb") as fh:
         fh.write(b"placeholder")
     pd.DataFrame({
         "Entity ID":[1,1],"Entity Name":["Owner","Owner"],"Plant ID":[10,10],
         "Plant Name":["Plant","Plant"],"Plant State":["CA","CA"],"Generator ID":["G2","G1"],
         "Balancing Authority Code":["CISO","CISO"],"Nameplate Capacity (MW)":[5.0,7.5],
         "Energy Source Code":["SUN","NG"],"Prime Mover Code":["PV","GT"],"Operating Year":[2019,2001],
-        }).to_csv(os.path.join(base,"form860m","2020-08-operating.csv.gz"),index=False,compression="gzip")
+        }).to_csv(os.path.join(form860m,"2020-08-operating.csv.gz"),index=False,compression="gzip")
 
     # Form 861m: workbook with two months
     os.makedirs(os.path.join(base,"form861m"))

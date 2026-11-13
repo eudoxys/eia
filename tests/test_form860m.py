@@ -36,6 +36,9 @@ def test_workbook(fake_get,year,month):
     assert (data["planned_derate_year"] == 0).all(), "missing integer column is not 0"
     assert (data["county"] == "").all(), "missing string column is not empty"
     assert pd.isna(data["latitude"].iloc[1]), "non-numeric float value is not NaN"
+    assert data.index.get_level_values("plant").dtype == "int64"
+    assert data["owner"].dtype == "int64" and data["operating_year"].dtype == "int64"
+    assert data["nameplate_mw"].dtype == "float64" and data["latitude"].dtype == "float64"
 
     # second call reads the subset cache
     calls.clear()
@@ -49,7 +52,14 @@ def test_raw(fake_get):
     assert isinstance(raw.index,pd.RangeIndex)
     assert list(raw.columns) == list(ROWS[0])
     assert raw["Plant Name"].tolist() == ["Plant","Plant"]
-    assert [float(x) for x in raw["Plant ID"]] == [10,10]
+    assert raw["Plant ID"].tolist() == ["10","10"], "integer column is float text (#47)"
+    assert raw["Entity ID"].tolist() == ["1","1"]
+    assert raw["Operating Year"].tolist() == ["2019","2001"]
+    assert raw["Nameplate Capacity (MW)"].tolist() == ["5","7.5"]
+    assert raw["Latitude"].tolist() == ["x","36.5"]
+
+    # a second call reads the subset cache and returns the same text
+    assert Form860m(2020,8,raw=True).equals(raw)
 
 def test_subset(fake_get):
     """subset selects the worksheet"""
@@ -58,7 +68,7 @@ def test_subset(fake_get):
 
 def test_bad_cache(cache_dir):
     """A corrupt cached workbook is reported, named, and deleted"""
-    cachefile = os.path.join(cache_dir,"eia","1","form860m","2020-08.xlsx")
+    cachefile = os.path.join(cache_dir,"eia",str(Form860m.CACHE_VERSION),"form860m","2020-08.xlsx")
     os.makedirs(os.path.dirname(cachefile))
     with open(cachefile,"wb") as fh:
         fh.write(b"not a workbook")

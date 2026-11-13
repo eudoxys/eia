@@ -88,7 +88,7 @@ class Form860m(FormBase):
     """
 
     # pylint: disable=invalid-name
-    CACHE_VERSION = 1
+    CACHE_VERSION = 2
     """@private Cache schema version (see `eia.base.cache_entry()`)"""
 
     SUBSETS = {
@@ -206,9 +206,15 @@ class Form860m(FormBase):
 
             # read from cache
             if refresh or not os.path.exists(subsetfile):
+                # read all values as text so the subset cache keeps EIA's
+                # original values (otherwise integer columns with blank
+                # footnote rows are read as floats and cached as "10.0")
                 data = pd.read_excel(cachefile,
                     skiprows=2 if year > 2020 or (year == 2020 and month > 10) else 1,
                     sheet_name=subset,
+                    dtype=str,
+                    keep_default_na=False,
+                    na_values=[""],
                     engine="openpyxl").dropna(subset="Plant ID")
 
                 # save subset cache data
