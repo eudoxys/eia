@@ -17,11 +17,19 @@ First public release. Changes since the initial import:
 - Documentation deployed with GitHub Pages (#26, #41), `DESIGN.md` (#24),
   and a Claude Code skill (#2).
 
+- Months before 2019 are read from the EIA-930 six-month balance files on
+  the Hourly Electric Grid Monitor (#50): `Form930` (demand, net generation,
+  interchange) now starts in July 2015 and `Form930Fuel` in July 2018. No
+  API key is needed for those months; regions are summed from their
+  balancing authorities, and both classes share one download and cache of
+  each file.
+
 ### Changed
 
 - Form 930 data start in January 2019 for both `Form930` and `Form930Fuel`,
   the first month the EIA API v2 serves (previously July 2015 and July
   2018, which returned empty frames); earlier years raise `ValueError` (#48).
+  Earlier months are now read from the six-month files instead (#50, above).
 - The test suite uses `pytest` (#21). Tests are split by module under
   `tests/test_*.py`, run offline by default against small synthetic EIA
   workbooks and API responses, and the tests that download data from EIA

@@ -100,10 +100,12 @@ Currently supported forms are
   plant, prime mover, and fuel
 
 - `eia.form930.Form930`: Hourly load, net generation, and interchange by
-  balancing authority or region (UTC, hour-beginning)
+  balancing authority or region (UTC, hour-beginning; July 2015 onward, with
+  months before 2019 read from the EIA-930 six-month files)
 
 - `eia.form930.Form930Fuel`: Hourly net generation by energy source by
-  balancing authority or region (UTC, hour-beginning; January 2019 onward)
+  balancing authority or region (UTC, hour-beginning; July 2018 onward, with
+  July-December 2018 read from the EIA-930 six-month files)
 
 Conventions
 -----------
