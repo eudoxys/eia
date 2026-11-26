@@ -7,7 +7,7 @@ dependencies = {file=["requirements.txt"]}
 
 [project]
 name = "eia"
-version = "0.0.1"
+version = "26.11.0"
 description = "EIA Form data accessor"
 authors = [
     {name = "David P. Chassin", email = "dchassin@eudoxys.com"},
