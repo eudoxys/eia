@@ -1,4 +1,5 @@
-[![validate](https://github.com/eudoxys/eia/actions/workflows/validate.yaml/badge.svg)](https://github.com/eudoxys/eia/actions/workflows/validate.yaml)
+[![Validation](https://github.com/eudoxys/eia/actions/workflows/validate.yaml/badge.svg)](https://github.com/eudoxys/eia/actions/workflows/validate.yaml)
+[![Documentation](https://github.com/eudoxys/eia/actions/workflows/deploy-pages.yaml/badge.svg)](https://github.com/eudoxys/eia/actions/workflows/deploy-pages.yaml)
 
 Access the following EIA Form data
 
