@@ -1,4 +1,4 @@
-name: deploy-pages
+name: Documentation
 
 on:
   push:
